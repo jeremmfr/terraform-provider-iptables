@@ -1,6 +1,6 @@
 # terraform-provider-iptables
 
-This provider is compatible with this API : https://gitlab.oxalide.net/oxalide/iptables-api
+This provider is compatible with this API : https://github.com/oxalide/iptables-api
 
 Compile:
 ========
