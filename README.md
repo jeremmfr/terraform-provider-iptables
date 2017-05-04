@@ -102,8 +102,8 @@ Create iptables rules in nat table for snat or dnat
 
 * **name** : (Required) name of rules
 * **on_cidr_blocks** : (Required) apply rule on CIDR list
-* **snat** (Optional) Can be specified multiple times for each snat rule (Warning, if only nat\_ip change, only the first nat)
-* **dnat** (Optional) Can be specified multiple times for each dnat rule (Warning, if only nat\_ip change, only the first nat)
+* **snat** (Optional) Can be specified multiple times for each snat rule
+* **dnat** (Optional) Can be specified multiple times for each dnat rule
 
 **snat** block supports : 
 * **iface** : (Required) interface output
