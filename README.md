@@ -6,15 +6,16 @@ This provider is compatible with this API : https://github.com/jeremmfr/iptables
 Compile:
 ========
 
-export GO111MODULE=on
+export GO111MODULE=on  
 go build -o terraform-provider-iptables && mv terraform-provider-iptables /usr/bin/
 
 Config:
 =======
 
 The provider adds DROP lines and a router_chain automatically, to disable this:
-* export CONFIG_IPTABLES_TERRAFORM_NODEFAULT=1 
-
+```
+export CONFIG_IPTABLES_TERRAFORM_NODEFAULT=1
+```
 Setup information for contact server :
 ```
 provider "iptables" {
