@@ -1,213 +1,267 @@
-// Copyright 2017 Jeremy Muriel
-//
-// This file is part of terraform-provider-iptables.
-//
-// terraform-provider-iptables is free software: you can redistribute it and/or modify
-// it under the terms of the GNU General Public License as published by
-// the Free Software Foundation, either version 3 of the License, or
-// (at your option) any later version.
-//
-// Foobar is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-// GNU General Public License for more details.
-//
-// You should have received a copy of the GNU General Public License
-// along with terraform-provider-iptables.  If not, see <http://www.gnu.org/licenses/>.
-
 package iptables
 
 import (
-	"net/http"
+	"crypto/tls"
+	"errors"
 	"fmt"
 	"io/ioutil"
-	"errors"
-	"strings"
 	"log"
+	"net/http"
+	"os"
 	"strconv"
-	"crypto/tls"
+	"strings"
 )
 
+// Client = provider configuration
 type Client struct {
-    Firewall_IP string
-	Port		int	
-	Allowed_IPs []interface{}
-	Https		bool
-	Insecure	bool
-	Logname		string
-	Login		string
-	Password	string
+	HTTPS      bool
+	Insecure   bool
+	IPv6       bool
+	Port       int
+	FirewallIP string
+	Logname    string
+	Login      string
+	Password   string
+	AllowedIPs []interface{}
 }
 
+// Rule struc for generate iptables line
 type Rule struct {
-	Action		string
-	State		string
-	Icmptype	string
-	Fragment	bool
-	Chain		string
-	Proto		string
-	Iface_in	string
-	Iface_out	string
-	Iface		string
-	IP_src		string
-	IP_dst		string
-	IP_nat		string
-	Sports		string
-	Dports		string
-	Tcpflags_1	string
-	Tcpflags_2	string
-	Notrack		bool
-	Position	string
-	Nth_every	string
-	Nth_packet	string
-	Logprefix	string
+	Except    bool
+	Fragment  bool
+	Notrack   bool
+	Action    string
+	State     string
+	Icmptype  string
+	Chain     string
+	Proto     string
+	IfaceIn   string
+	IfaceOut  string
+	Iface     string
+	IPSrc     string
+	IPDst     string
+	IPNat     string
+	Sports    string
+	Dports    string
+	Tcpflags1 string
+	Tcpflags2 string
+	Position  string
+	NthEvery  string
+	NthPacket string
+	Logprefix string
+	Tcpmss    string
 }
 
-func NewClient(firewall_ip string, firewall_port_api int, allowed_ips []interface{}, https bool, insecure bool, logname string, login string, password string) (*Client,error) {
+// NewClient configure
+func NewClient(firewallIP string, firewallPortAPI int, allowedIps []interface{}, https bool, insecure bool, logname string, login string, password string, ipv6 bool) (*Client, error) {
 	client := &Client{
-			Firewall_IP	: firewall_ip,
-			Port		: firewall_port_api,
-			Allowed_IPs : allowed_ips,
-			Https		: https,
-			Insecure	: insecure,
-			Logname		: logname,
-			Login		: login,
-			Password	: password,
+		FirewallIP: firewallIP,
+		Port:       firewallPortAPI,
+		AllowedIPs: allowedIps,
+		HTTPS:      https,
+		Insecure:   insecure,
+		Logname:    logname,
+		Login:      login,
+		Password:   password,
+		IPv6:       ipv6,
 	}
 
-    checkExists_router, err := client.ChainAPI("router_chain","GET")
-    if err != nil {
-		return nil, err
-	}
-	if !checkExists_router {
-		createChain, err := client.ChainAPI("router_chain", "PUT")
-	    if ( !createChain || err != nil ) {
-			return nil,fmt.Errorf("Failed create chain router")
-		}
-	}
-//	Add Allowed_IPs on TCP Firewal_IP:Port
-	for _, cidr := range client.Allowed_IPs {
-// raw notrack on Firewal_IP:Port
-		acceptAPI := Rule{
-			Action: "CT",
-			Chain:	"PREROUTING",
-			Proto: "tcp",
-			Iface_in: "*",
-			Iface_out: "*",
-			IP_src: strings.Replace(cidr.(string), "/", "_", -1),
-			IP_dst: client.Firewall_IP,
-			Sports: "0",
-			Dports: strconv.Itoa(client.Port),
-			Tcpflags_1: "SYN,RST,ACK,FIN",
-			Tcpflags_2: "SYN",
-			Notrack: true,
-			Position: "?",
-		}
-		routeexists, err := client.RawAPI(acceptAPI, "GET")
+	// Allow no default rules
+	if os.Getenv("CONFIG_IPTABLES_TERRAFORM_NODEFAULT") == "" {
+
+		checkExistsRouter, err := client.chainAPIV4("router_chain", "GET")
 		if err != nil {
-			return nil,fmt.Errorf("[ERROR] Failed check rules (raw) allowed IP for API for cidr %s", cidr.(string))
+			return nil, err
 		}
-		if !routeexists {
-			routeCIDR, err := client.RawAPI(acceptAPI, "PUT")
-			if ( !routeCIDR || err != nil ) {
-				return nil,fmt.Errorf("[ERROR] Failed create rules (raw) allowed IP for API for cidr %s", cidr.(string))
+		if !checkExistsRouter {
+			createChain, err := client.chainAPIV4("router_chain", "PUT")
+			if !createChain || err != nil {
+				return nil, fmt.Errorf("create chain router failed : %s", err)
 			}
 		}
-			
-// ingress on Firewal_IP:Port
-		acceptAPI = Rule{
-			Action: "ACCEPT",
-			Chain: "router_chain",
-			Proto: "tcp",
-			Iface_in: "*",
-			Iface_out: "*",
-			IP_src: strings.Replace(cidr.(string), "/", "_", -1),
-			IP_dst: client.Firewall_IP,
-			Sports: "0",
-			Dports: strconv.Itoa(client.Port),
-			Position: "?",
-		}
-		routeexists, err = client.RulesAPI(acceptAPI, "GET")
-		if err != nil {
-			return nil,fmt.Errorf("[ERROR] Failed check rules (ingress) allowed IP for API for cidr %s", cidr.(string))
-		}
-		if !routeexists {
-			routeCIDR, err := client.RulesAPI(acceptAPI, "PUT")
-			if ( !routeCIDR || err != nil ) {
-				return nil,fmt.Errorf("[ERROR] Failed create rules (ingress) allowed IP for API for cidr %s", cidr.(string))
+		//	Add AllowedIPs on TCP Firewal_IP:Port
+		for _, cidr := range client.AllowedIPs {
+			// raw notrack on Firewal_IP:Port
+			acceptAPI := Rule{
+				Action:    "CT",
+				Chain:     "PREROUTING",
+				Proto:     "tcp",
+				IfaceIn:   "*",
+				IfaceOut:  "*",
+				IPSrc:     strings.Replace(cidr.(string), "/", "_", -1),
+				IPDst:     client.FirewallIP,
+				Sports:    "0",
+				Dports:    strconv.Itoa(client.Port),
+				Tcpflags1: "SYN,RST,ACK,FIN",
+				Tcpflags2: "SYN",
+				Notrack:   true,
+				Position:  "?",
+			}
+			routeexists, err := client.rawAPIV4(acceptAPI, "GET")
+			if err != nil {
+				return nil, fmt.Errorf("check rules (raw) allowed IP for API for cidr %s failed : %s", cidr.(string), err)
+			}
+			if !routeexists {
+				routeCIDR, err := client.rawAPIV4(acceptAPI, "PUT")
+				if !routeCIDR || err != nil {
+					return nil, fmt.Errorf("create rules (raw) allowed IP for API for cidr %s failed : %s", cidr.(string), err)
+				}
+			}
+
+			// ingress on Firewal_IP:Port
+			acceptAPI = Rule{
+				Action:   "ACCEPT",
+				Chain:    "router_chain",
+				Proto:    "tcp",
+				IfaceIn:  "*",
+				IfaceOut: "*",
+				IPSrc:    strings.Replace(cidr.(string), "/", "_", -1),
+				IPDst:    client.FirewallIP,
+				Sports:   "0",
+				Dports:   strconv.Itoa(client.Port),
+				Position: "?",
+			}
+			routeexists, err = client.rulesAPIV4(acceptAPI, "GET")
+			if err != nil {
+				return nil, fmt.Errorf("check rules (ingress) allowed IP for API for cidr %s failed : %s", cidr.(string), err)
+			}
+			if !routeexists {
+				routeCIDR, err := client.rulesAPIV4(acceptAPI, "PUT")
+				if !routeCIDR || err != nil {
+					return nil, fmt.Errorf("create rules (ingress) allowed IP for API for cidr %s failed : %s", cidr.(string), err)
+				}
+			}
+
+			// egress on Firewal_IP:Port
+			acceptAPI = Rule{
+				Action:   "ACCEPT",
+				Chain:    "router_chain",
+				Proto:    "tcp",
+				IfaceIn:  "*",
+				IfaceOut: "*",
+				IPSrc:    client.FirewallIP,
+				IPDst:    strings.Replace(cidr.(string), "/", "_", -1),
+				Sports:   strconv.Itoa(client.Port),
+				Dports:   "0",
+				Position: "?",
+			}
+			routeexists, err = client.rulesAPIV4(acceptAPI, "GET")
+			if err != nil {
+				return nil, fmt.Errorf("check rules (egress) allowed IP for API for cidr %s failed : %s", cidr.(string), err)
+			}
+			if !routeexists {
+				routeCIDR, err := client.rulesAPIV4(acceptAPI, "PUT")
+				if !routeCIDR || err != nil {
+					return nil, fmt.Errorf("create rules (egress) allowed IP for API for cidr %s failed : %s", cidr.(string), err)
+				}
 			}
 		}
 
-// egress on Firewal_IP:Port
-		acceptAPI = Rule{
-			Action: "ACCEPT",
-			Chain: "router_chain",
-			Proto: "tcp",
-			Iface_in: "*",
-			Iface_out: "*",
-			IP_src: client.Firewall_IP,
-			IP_dst: strings.Replace(cidr.(string), "/", "_", -1),
-			Sports: strconv.Itoa(client.Port),
-			Dports: "0",
-			Position: "?",
-		}
-		routeexists, err = client.RulesAPI(acceptAPI, "GET")
-		if err != nil {
-			return nil,fmt.Errorf("[ERROR] Failed check rules (egress) allowed IP for API for cidr %s", cidr.(string))
-		}
-		if !routeexists {
-			routeCIDR, err := client.RulesAPI(acceptAPI, "PUT")
-			if ( !routeCIDR || err != nil ) {
-				return nil,fmt.Errorf("[ERROR] Failed create rules (egress) allowed IP for API for cidr %s", cidr.(string))
+		// Add rules for default chain
+		defaultTable := []string{"INPUT", "FORWARD", "OUTPUT"}
+		for _, table := range defaultTable {
+			routeDefault := Rule{
+				Action:   "router_chain",
+				Chain:    table,
+				Proto:    "all",
+				IfaceIn:  "*",
+				IfaceOut: "*",
+				IPSrc:    "0.0.0.0_0",
+				IPDst:    "0.0.0.0_0",
+				Sports:   "0",
+				Dports:   "0",
+				Position: "?",
+			}
+			ruleexists, err := client.rulesAPIV4(routeDefault, "GET")
+			if err != nil {
+				return nil, fmt.Errorf("check default rules %s failed : %s", table, err)
+			}
+			if !ruleexists {
+				resp, err := client.rulesAPIV4(routeDefault, "PUT")
+				if !resp || err != nil {
+					return nil, fmt.Errorf("create default rules %s failed : %s", table, err)
+				}
+			}
+			ruleDrop := Rule{
+				Action:   "DROP",
+				Chain:    table,
+				Proto:    "all",
+				IfaceIn:  "*",
+				IfaceOut: "*",
+				IPSrc:    "0.0.0.0_0",
+				IPDst:    "0.0.0.0_0",
+				Sports:   "0",
+				Dports:   "0",
+				Position: "?",
+			}
+			ruleexists, err = client.rulesAPIV4(ruleDrop, "GET")
+			if err != nil {
+				return nil, fmt.Errorf("check default rules drop %s failed : %s", table, err)
+			}
+			if !ruleexists {
+				resp, err := client.rulesAPIV4(ruleDrop, "PUT")
+				if !resp || err != nil {
+					return nil, fmt.Errorf("create default rules drop %s failed : %s", table, err)
+				}
 			}
 		}
-	}
-	
-// Add rules for default chain
-	default_table := []string{"INPUT", "FORWARD", "OUTPUT"}
-	for _, table := range default_table {
-		route_default := Rule{
-			Action: "router_chain",
-			Chain: table,
-			Proto: "all",
-			Iface_in: "*",
-			Iface_out: "*",
-			IP_src: "0.0.0.0_0",
-			IP_dst: "0.0.0.0_0",
-			Sports: "0",
-			Dports: "0",
-			Position: "?",
-		}
-		ruleexists, err := client.RulesAPI(route_default, "GET")
-		if err != nil {
-			return nil,fmt.Errorf("[ERROR] check default rules %s", table)
-		}
-		if !ruleexists {
-			resp, err := client.RulesAPI(route_default, "PUT")
-			if ( !resp || err != nil ) {
-				return nil,fmt.Errorf("[ERROR] Failed create default rules %s", table)
+		if ipv6 {
+			checkExistsRouter, err := client.chainAPIV6("router_chain", "GET")
+			if err != nil {
+				return nil, err
 			}
-		}
-		rule_drop := Rule{
-			Action: "DROP",
-			Chain: table,
-			Proto: "all",
-			Iface_in: "*",
-			Iface_out: "*",
-			IP_src: "0.0.0.0_0",
-			IP_dst: "0.0.0.0_0",
-			Sports: "0",
-			Dports: "0",
-			Position: "?",
-		}
-		ruleexists, err = client.RulesAPI(rule_drop, "GET")
-		if err != nil {
-			return nil,fmt.Errorf("[ERROR] check default rules drop %s", table)
-		}
-		if !ruleexists {
-			resp, err := client.RulesAPI(rule_drop, "PUT")
-			if ( !resp || err != nil ) {
-				return nil,fmt.Errorf("[ERROR] Failed create default rules drop %s", table)
+			if !checkExistsRouter {
+				createChain, err := client.chainAPIV6("router_chain", "PUT")
+				if !createChain || err != nil {
+					return nil, fmt.Errorf("create chain router v6 failed : %s", err)
+				}
+			}
+			for _, table := range defaultTable {
+				routeDefault := Rule{
+					Action:   "router_chain",
+					Chain:    table,
+					Proto:    "all",
+					IfaceIn:  "*",
+					IfaceOut: "*",
+					IPSrc:    "::_0",
+					IPDst:    "::_0",
+					Sports:   "0",
+					Dports:   "0",
+					Position: "?",
+				}
+				ruleexists, err := client.rulesAPIV6(routeDefault, "GET")
+				if err != nil {
+					return nil, fmt.Errorf("check default rules v6 %s failed : %s", table, err)
+				}
+				if !ruleexists {
+					resp, err := client.rulesAPIV6(routeDefault, "PUT")
+					if !resp || err != nil {
+						return nil, fmt.Errorf("create default rules v6 %s failed : %s", table, err)
+					}
+				}
+
+				ruleDrop := Rule{
+					Action:   "DROP",
+					Chain:    table,
+					Proto:    "all",
+					IfaceIn:  "*",
+					IfaceOut: "*",
+					IPSrc:    "::_0",
+					IPDst:    "::_0",
+					Sports:   "0",
+					Dports:   "0",
+					Position: "?",
+				}
+				ruleexists, err = client.rulesAPIV6(ruleDrop, "GET")
+				if err != nil {
+					return nil, fmt.Errorf("check default rules drop v6 %s failed : %s", table, err)
+				}
+				if !ruleexists {
+					resp, err := client.rulesAPIV6(ruleDrop, "PUT")
+					if !resp || err != nil {
+						return nil, fmt.Errorf("create default rules drop v6 %s failed : %s", table, err)
+					}
+				}
 			}
 		}
 	}
@@ -215,62 +269,66 @@ func NewClient(firewall_ip string, firewall_port_api int, allowed_ips []interfac
 	return client, nil
 }
 
-func (c *Client)  newRequest(method string, url string) (*http.Request, error) {
-	IP := c.Firewall_IP
-	port := strconv.Itoa(c.Port)
-	
-	matched := strings.Contains(url, "?")
-	url_str := ""
+func (client *Client) newRequest(method string, uriString string) (*http.Request, error) {
+	IP := client.FirewallIP
+	port := strconv.Itoa(client.Port)
+
+	matched := strings.Contains(uriString, "?")
+	urLString := ""
 	if matched {
-		url_str = "http://" + IP + ":" + port + url + "&logname=" + c.Logname
+		urLString = "http://" + IP + ":" + port + uriString + "&logname=" + client.Logname
 	} else {
-		url_str = "http://" + IP + ":" + port + url + "?&logname=" + c.Logname
+		urLString = "http://" + IP + ":" + port + uriString + "?&logname=" + client.Logname
 	}
-	if c.Https {
-		url_str = strings.Replace(url_str, "http://", "https://", -1)
+	if client.HTTPS {
+		urLString = strings.Replace(urLString, "http://", "https://", -1)
 	}
-	req, err := http.NewRequest(method, url_str, nil)
-	if c.Login != "" && c.Password != "" {
-		req.SetBasicAuth(c.Login, c.Password)
+	req, err := http.NewRequest(method, urLString, nil)
+	if client.Login != "" && client.Password != "" {
+		req.SetBasicAuth(client.Login, client.Password)
 	}
-	log.Printf("[INFO] New API request: %s", method, url_str)
+	log.Printf("[INFO] New API request: %s %s", method, urLString)
 	if err != nil {
-        return nil, fmt.Errorf("Error during creation of request: %s", err)
-    }
+		return nil, fmt.Errorf("error during creation of request: %s", err)
+	}
 	return req, nil
 }
 
-func (client *Client) RulesAPI(rule Rule, method string) (bool, error) {
-	url_str_1 := []string{"/rules/", rule.Action, "/", rule.Chain, "/", rule.Proto, "/", rule.Iface_in, "/", rule.Iface_out, "/", rule.IP_src, "/", rule.IP_dst, "/"}
-	var url_str []string
-	if (rule.Sports != "0") || (rule.Dports != "0") || (rule.State != "") || (rule.Icmptype != "") || (rule.Fragment == true) || (rule.Position != "?") || (rule.Logprefix != "") {
-		url_str = append(url_str_1, "?")
+func (client *Client) rulesAPI(version string, rule Rule, method string) (bool, error) {
+	var uriString []string
+	if version == "v4" {
+		uriString = append(uriString, "/rules/")
+	}
+	if version == "v6" {
+		uriString = append(uriString, "/rules_v6/")
+	}
+	uriString = append(uriString, rule.Action, "/", rule.Chain, "/", rule.Proto, "/", rule.IfaceIn, "/", rule.IfaceOut, "/", rule.IPSrc, "/", rule.IPDst, "/")
+	if (rule.Sports != "0") || (rule.Dports != "0") || (rule.State != "") || (rule.Icmptype != "") || rule.Fragment || (rule.Position != "?") || (rule.Logprefix != "") {
+		uriString = append(uriString, "?")
 		if rule.Sports != "0" {
-			url_str = append(url_str, "&sports=", rule.Sports)
+			uriString = append(uriString, "&sports=", rule.Sports)
 		}
 		if rule.Dports != "0" {
-			url_str = append(url_str, "&dports=", rule.Dports)
+			uriString = append(uriString, "&dports=", rule.Dports)
 		}
 		if rule.State != "" {
-			url_str = append(url_str, "&state=", rule.State)
+			uriString = append(uriString, "&state=", rule.State)
 		}
 		if rule.Icmptype != "" {
-			url_str = append(url_str, "&icmptype=", rule.Icmptype)
+			uriString = append(uriString, "&icmptype=", rule.Icmptype)
 		}
-		if rule.Fragment == true {
-			url_str = append(url_str, "&fragment=true")
+		if rule.Fragment {
+			uriString = append(uriString, "&fragment=true")
 		}
 		if rule.Position != "?" {
-			url_str = append(url_str, "&position=", rule.Position)
+			uriString = append(uriString, "&position=", rule.Position)
 		}
 		if rule.Logprefix != "" {
-			url_str = append(url_str, "&log-prefix=", rule.Logprefix)
+			uriString = append(uriString, "&log-prefix=", rule.Logprefix)
 		}
-	} else {
-		url_str = url_str_1
 	}
-	
-	req, err := client.newRequest(method, strings.Join(url_str, ""))
+
+	req, err := client.newRequest(method, strings.Join(uriString, ""))
 	if err != nil {
 		return false, err
 	}
@@ -279,19 +337,19 @@ func (client *Client) RulesAPI(rule Rule, method string) (bool, error) {
 	}
 	if client.Insecure {
 		tr = &http.Transport{
-	        TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
+			TLSClientConfig:   &tls.Config{InsecureSkipVerify: true},
 			DisableKeepAlives: true,
-	    }
+		}
 	}
-	http_client := &http.Client{Transport: tr}
-	resp, err := http_client.Do(req)
+	httpClient := &http.Client{Transport: tr}
+	resp, err := httpClient.Do(req)
 	if err != nil {
-		log.Printf("[ERROR] Error when do Req %s", err)
+		log.Printf("error when do request %s", err)
 		return false, err
 	}
 	defer resp.Body.Close()
 	body, _ := ioutil.ReadAll(resp.Body)
-	log.Printf("[INFO] Response API request %s", resp.StatusCode, string(body))
+	log.Printf("[INFO] Response API request %d %s", resp.StatusCode, string(body))
 
 	if resp.StatusCode == 200 {
 		return true, nil
@@ -300,30 +358,38 @@ func (client *Client) RulesAPI(rule Rule, method string) (bool, error) {
 		return false, nil
 	}
 	if resp.StatusCode == 409 {
-		return false, errors.New("Conflict with position")
+		return false, errors.New("conflict with position")
 	}
 	return false, errors.New(string(body))
 }
 
-func (client *Client) NatAPI(rule Rule, method string) (bool, error) {
-	url_str_1 := []string{"/nat/", rule.Action, "/", rule.Chain, "/", rule.Proto, "/", rule.Iface, "/", rule.IP_src, "/", rule.IP_dst, "/", rule.IP_nat, "/"}
-	var url_str []string
-	if (rule.Dports != "0") || (rule.Position != "?") || (rule.Nth_every != "") {
-		url_str = append(url_str_1, "?")
+func (client *Client) natAPI(version string, rule Rule, method string) (bool, error) {
+	var uriString []string
+	if version == "v4" {
+		uriString = append(uriString, "/nat/")
+	}
+	if version == "v6" {
+		uriString = append(uriString, "/nat_v6/")
+	}
+	uriString = append(uriString, rule.Action, "/", rule.Chain, "/", rule.Proto, "/", rule.Iface, "/", rule.IPSrc, "/", rule.IPDst, "/", rule.IPNat, "/")
+
+	if (rule.Dports != "0") || (rule.Position != "?") || (rule.NthEvery != "") || rule.Except {
+		uriString = append(uriString, "?")
 		if rule.Dports != "0" {
-			url_str = append(url_str, "&dport=", rule.Dports)
+			uriString = append(uriString, "&dport=", rule.Dports)
 		}
 		if rule.Position != "?" {
-			url_str = append(url_str, "&position=", rule.Position)
+			uriString = append(uriString, "&position=", rule.Position)
 		}
-		if rule.Nth_every != "" {
-			url_str = append(url_str, "&nth_every=", rule.Nth_every, "&nth_packet=", rule.Nth_packet)
+		if rule.NthEvery != "" {
+			uriString = append(uriString, "&nth_every=", rule.NthEvery, "&nth_packet=", rule.NthPacket)
 		}
-	} else {
-		url_str = url_str_1
+		if rule.Except {
+			uriString = append(uriString, "&except=true")
+		}
 	}
-	
-	req, err := client.newRequest(method, strings.Join(url_str, ""))
+
+	req, err := client.newRequest(method, strings.Join(uriString, ""))
 	if err != nil {
 		return false, err
 	}
@@ -332,19 +398,19 @@ func (client *Client) NatAPI(rule Rule, method string) (bool, error) {
 	}
 	if client.Insecure {
 		tr = &http.Transport{
-	        TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
+			TLSClientConfig:   &tls.Config{InsecureSkipVerify: true},
 			DisableKeepAlives: true,
-	    }
+		}
 	}
-	http_client := &http.Client{Transport: tr}
-	resp, err := http_client.Do(req)
+	httpClient := &http.Client{Transport: tr}
+	resp, err := httpClient.Do(req)
 	if err != nil {
-		log.Printf("[ERROR] Error when do Req %s", err)
+		log.Printf("rrror when do request %s", err)
 		return false, err
 	}
 	defer resp.Body.Close()
 	body, _ := ioutil.ReadAll(resp.Body)
-	log.Printf("[INFO] Response API request %s", resp.StatusCode, string(body))
+	log.Printf("[INFO] Response API request %d %s", resp.StatusCode, string(body))
 
 	if resp.StatusCode == 200 {
 		return true, nil
@@ -353,38 +419,45 @@ func (client *Client) NatAPI(rule Rule, method string) (bool, error) {
 		return false, nil
 	}
 	if resp.StatusCode == 409 {
-		return false, errors.New("Conflict with position")
+		return false, errors.New("conflict with position")
 	}
 	return false, errors.New(string(body))
 }
-func (client *Client) RawAPI(rule Rule, method string) (bool, error) {
-	url_str_1 := []string{"/raw/", rule.Action, "/", rule.Chain, "/", rule.Proto, "/", rule.Iface_in, "/", rule.Iface_out, "/", rule.IP_src, "/", rule.IP_dst, "/"}
-	var url_str []string
-	if (rule.Sports != "0") || (rule.Dports != "0") || (rule.Tcpflags_1 != "") || (rule.Tcpflags_2 != "") || (rule.Notrack == true) || (rule.Position != "?") || (rule.Logprefix != "") {
-		url_str = append(url_str_1, "?")
+func (client *Client) rawAPI(version string, rule Rule, method string) (bool, error) {
+	var uriString []string
+	if version == "v4" {
+		uriString = append(uriString, "/raw/")
+	}
+	if version == "v6" {
+		uriString = append(uriString, "/raw_v6/")
+	}
+	uriString = append(uriString, rule.Action, "/", rule.Chain, "/", rule.Proto, "/", rule.IfaceIn, "/", rule.IfaceOut, "/", rule.IPSrc, "/", rule.IPDst, "/")
+	if (rule.Sports != "0") || (rule.Dports != "0") || (rule.Tcpflags1 != "") || (rule.Tcpflags2 != "") || rule.Notrack || (rule.Position != "?") || (rule.Logprefix != "") || (rule.Tcpmss != "") {
+		uriString = append(uriString, "?")
 		if rule.Sports != "0" {
-			url_str = append(url_str, "&sports=", rule.Sports)
+			uriString = append(uriString, "&sports=", rule.Sports)
 		}
 		if rule.Dports != "0" {
-			url_str = append(url_str, "&dports=", rule.Dports)
+			uriString = append(uriString, "&dports=", rule.Dports)
 		}
-		if (rule.Tcpflags_1 != "") && (rule.Tcpflags_2 != "") {
-			url_str = append(url_str, "&tcpflag1=", rule.Tcpflags_1, "&tcpflag2=", rule.Tcpflags_2)
+		if (rule.Tcpflags1 != "") && (rule.Tcpflags2 != "") {
+			uriString = append(uriString, "&tcpflag1=", rule.Tcpflags1, "&tcpflag2=", rule.Tcpflags2)
 		}
-		if rule.Notrack == true {
-			url_str = append(url_str, "&notrack=true")
+		if rule.Notrack {
+			uriString = append(uriString, "&notrack=true")
 		}
 		if rule.Position != "?" {
-			url_str = append(url_str, "&position=", rule.Position)
+			uriString = append(uriString, "&position=", rule.Position)
 		}
 		if rule.Logprefix != "" {
-			url_str = append(url_str, "&log-prefix=", rule.Logprefix)
+			uriString = append(uriString, "&log-prefix=", rule.Logprefix)
 		}
-	} else {
-		url_str = url_str_1
+		if rule.Tcpmss != "" {
+			uriString = append(uriString, "&tcpmss=", rule.Tcpmss)
+		}
 	}
-	
-	req, err := client.newRequest(method, strings.Join(url_str, ""))
+
+	req, err := client.newRequest(method, strings.Join(uriString, ""))
 	if err != nil {
 		return false, err
 	}
@@ -393,19 +466,19 @@ func (client *Client) RawAPI(rule Rule, method string) (bool, error) {
 	}
 	if client.Insecure {
 		tr = &http.Transport{
-	        TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
+			TLSClientConfig:   &tls.Config{InsecureSkipVerify: true},
 			DisableKeepAlives: true,
-	    }
+		}
 	}
-	http_client := &http.Client{Transport: tr}
-	resp, err := http_client.Do(req)
+	httpClient := &http.Client{Transport: tr}
+	resp, err := httpClient.Do(req)
 	if err != nil {
-		log.Printf("[ERROR] Error when do Req %s", err)
+		log.Printf("error when do request %s", err)
 		return false, err
 	}
 	defer resp.Body.Close()
 	body, _ := ioutil.ReadAll(resp.Body)
-	log.Printf("[INFO] Response API request %s", resp.StatusCode, string(body))
+	log.Printf("[INFO] Response API request %d %s", resp.StatusCode, string(body))
 
 	if resp.StatusCode == 200 {
 		return true, nil
@@ -414,14 +487,22 @@ func (client *Client) RawAPI(rule Rule, method string) (bool, error) {
 		return false, nil
 	}
 	if resp.StatusCode == 409 {
-		return false, errors.New("Conflict with position")
+		return false, errors.New("conflict with position")
 	}
 	return false, errors.New(string(body))
 }
 
-func (client *Client) ChainAPI(chain string, method string) (bool, error) {
-	url_str := []string{"/chain/filter/", chain, "/"}
-	req, err := client.newRequest(method, strings.Join(url_str, ""))
+func (client *Client) chainAPI(version string, chain string, method string) (bool, error) {
+	var uriString []string
+	if version == "v4" {
+		uriString = append(uriString, "/chain/filter/")
+	}
+	if version == "v6" {
+		uriString = append(uriString, "/chain_v6/filter/")
+	}
+	uriString = append(uriString, chain, "/")
+
+	req, err := client.newRequest(method, strings.Join(uriString, ""))
 	if err != nil {
 		return false, err
 	}
@@ -430,19 +511,19 @@ func (client *Client) ChainAPI(chain string, method string) (bool, error) {
 	}
 	if client.Insecure {
 		tr = &http.Transport{
-	        TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
+			TLSClientConfig:   &tls.Config{InsecureSkipVerify: true},
 			DisableKeepAlives: true,
-	    }
+		}
 	}
-	http_client := &http.Client{Transport: tr}
-	resp, err := http_client.Do(req)
+	httpClient := &http.Client{Transport: tr}
+	resp, err := httpClient.Do(req)
 	if err != nil {
-		log.Printf("[ERROR] Error when do Req %s", err)
+		log.Printf("error when do request %s", err)
 		return false, err
 	}
 	defer resp.Body.Close()
 	body, _ := ioutil.ReadAll(resp.Body)
-	log.Printf("[INFO] Response API request %s", resp.StatusCode, string(body))
+	log.Printf("[INFO] Response API request %d %s", resp.StatusCode, string(body))
 
 	if resp.StatusCode == 200 {
 		return true, nil
@@ -451,44 +532,21 @@ func (client *Client) ChainAPI(chain string, method string) (bool, error) {
 		return false, nil
 	}
 	if resp.StatusCode == 401 {
-		return false, errors.New(strings.Join([]string{client.Firewall_IP, ": You are Unauthorized"}, " "))
+		return false, errors.New(strings.Join([]string{client.FirewallIP, ": You are Unauthorized"}, " "))
 	}
 	return false, errors.New(string(body))
 }
 
-func (client *Client) mvChain(old_chain string, new_chain string) error {
-	url_str := []string{"/mvchain/filter/", old_chain, "/", new_chain, "/"}
-	req, err := client.newRequest("PUT", strings.Join(url_str, ""))
-	if err != nil {
-        return err
-    }
-	tr := &http.Transport{
-		DisableKeepAlives: true,
+func (client *Client) save(version string) error {
+	var uriString []string
+	if version == "v4" {
+		uriString = append(uriString, "/save/")
 	}
-	if client.Insecure {
-		tr = &http.Transport{
-	        TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
-			DisableKeepAlives: true,
-	    }
+	if version == "v6" {
+		uriString = append(uriString, "/save_v6/")
 	}
-	http_client := &http.Client{Transport: tr}
-	resp, err := http_client.Do(req)
-	if err != nil {
-		log.Printf("[ERROR] Error when do Req %s", err)
-		return err
-	}
-	defer resp.Body.Close()
-	body, _ := ioutil.ReadAll(resp.Body)
-	log.Printf("[INFO] Response API request %s", resp.StatusCode, string(body))
-	
-	if resp.StatusCode == 200 {
-		return nil
-	}
-	return errors.New(string(body))
-}
 
-func (client *Client) save() error {
-	req, err := client.newRequest("GET", "/save/")
+	req, err := client.newRequest("GET", strings.Join(uriString, ""))
 	if err != nil {
 		return err
 	}
@@ -497,21 +555,53 @@ func (client *Client) save() error {
 	}
 	if client.Insecure {
 		tr = &http.Transport{
-	        TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
+			TLSClientConfig:   &tls.Config{InsecureSkipVerify: true},
 			DisableKeepAlives: true,
-	    }
+		}
 	}
-	http_client := &http.Client{Transport: tr}
-	resp, err := http_client.Do(req)
+	httpClient := &http.Client{Transport: tr}
+	resp, err := httpClient.Do(req)
 	if err != nil {
-		log.Printf("[ERROR] Error when do Req %s", err)
+		log.Printf("error when do request %s", err)
 		return err
 	}
 	defer resp.Body.Close()
 	body, _ := ioutil.ReadAll(resp.Body)
-	log.Printf("[INFO] Response API request %s", resp.StatusCode, string(body))
+	log.Printf("[INFO] Response API request %d %s", resp.StatusCode, string(body))
 	if resp.StatusCode != 200 {
 		return errors.New(string(body))
 	}
 	return nil
+}
+
+func (client *Client) chainAPIV4(chain string, method string) (bool, error) {
+	return client.chainAPI("v4", chain, method)
+}
+func (client *Client) rulesAPIV4(rule Rule, method string) (bool, error) {
+	return client.rulesAPI("v4", rule, method)
+}
+func (client *Client) natAPIV4(rule Rule, method string) (bool, error) {
+	return client.natAPI("v4", rule, method)
+}
+func (client *Client) rawAPIV4(rule Rule, method string) (bool, error) {
+	return client.rawAPI("v4", rule, method)
+}
+func (client *Client) saveV4() error {
+	return client.save("v4")
+}
+
+func (client *Client) chainAPIV6(chain string, method string) (bool, error) {
+	return client.chainAPI("v6", chain, method)
+}
+func (client *Client) rulesAPIV6(rule Rule, method string) (bool, error) {
+	return client.rulesAPI("v6", rule, method)
+}
+func (client *Client) natAPIV6(rule Rule, method string) (bool, error) {
+	return client.natAPI("v6", rule, method)
+}
+func (client *Client) rawAPIV6(rule Rule, method string) (bool, error) {
+	return client.rawAPI("v6", rule, method)
+}
+func (client *Client) saveV6() error {
+	return client.save("v6")
 }

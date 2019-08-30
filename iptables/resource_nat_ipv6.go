@@ -1,20 +1,3 @@
-// Copyright 2017 Jeremy Muriel
-//
-// This file is part of terraform-provider-iptables.
-//
-// terraform-provider-iptables is free software: you can redistribute it and/or modify
-// it under the terms of the GNU General Public License as published by
-// the Free Software Foundation, either version 3 of the License, or
-// (at your option) any later version.
-//
-// Foobar is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-// GNU General Public License for more details.
-//
-// You should have received a copy of the GNU General Public License
-// along with terraform-provider-iptables.  If not, see <http://www.gnu.org/licenses/>.
-
 package iptables
 
 import (
@@ -27,15 +10,12 @@ import (
 	"github.com/hashicorp/terraform/helper/schema"
 )
 
-const strDnat string = "dnat"
-const strSnat string = "snat"
-
-func resourceNat() *schema.Resource {
+func resourceNatIPv6() *schema.Resource {
 	return &schema.Resource{
-		Create: resourceNatCreate,
-		Read:   resourceNatRead,
-		Update: resourceNatUpdate,
-		Delete: resourceNatDelete,
+		Create: resourceNatIPv6Create,
+		Read:   resourceNatIPv6Read,
+		Update: resourceNatIPv6Update,
+		Delete: resourceNatIPv6Delete,
 		Schema: map[string]*schema.Schema{
 			"name": {
 				Type:     schema.TypeString,
@@ -75,7 +55,7 @@ func resourceNat() *schema.Resource {
 						"except_cidr_blocks": {
 							Type:         schema.TypeString,
 							Optional:     true,
-							ValidateFunc: validateCIDRNetworkOrHostV4(),
+							ValidateFunc: validateCIDRNetworkOrHostV6(),
 						},
 						"nat_ip": {
 							Type:     schema.TypeString,
@@ -98,7 +78,7 @@ func resourceNat() *schema.Resource {
 						},
 					},
 				},
-				Set: natHash,
+				Set: natHashV6,
 			},
 			"dnat": {
 				Type:     schema.TypeSet,
@@ -129,7 +109,7 @@ func resourceNat() *schema.Resource {
 						"except_cidr_blocks": {
 							Type:         schema.TypeString,
 							Optional:     true,
-							ValidateFunc: validateCIDRNetworkOrHostV4(),
+							ValidateFunc: validateCIDRNetworkOrHostV6(),
 						},
 						"nat_ip": {
 							Type:     schema.TypeString,
@@ -152,14 +132,14 @@ func resourceNat() *schema.Resource {
 						},
 					},
 				},
-				Set: natHash,
+				Set: natHashV6,
 			},
 		},
 	}
 }
 
-func resourceNatCreate(d *schema.ResourceData, m interface{}) error {
-	err := resourceNatUpdate(d, m)
+func resourceNatIPv6Create(d *schema.ResourceData, m interface{}) error {
+	err := resourceNatIPv6Update(d, m)
 	if err != nil {
 		return err
 	}
@@ -167,13 +147,13 @@ func resourceNatCreate(d *schema.ResourceData, m interface{}) error {
 	return nil
 }
 
-func resourceNatRead(d *schema.ResourceData, m interface{}) error {
+func resourceNatIPv6Read(d *schema.ResourceData, m interface{}) error {
 	if d.HasChange("on_cidr_blocks") {
 		oldOnCIDR, _ := d.GetChange("on_cidr_blocks")
-		natReadOnCIDR(oldOnCIDR.([]interface{}), d, m)
+		natReadOnCIDRV6(oldOnCIDR.([]interface{}), d, m)
 	} else {
 		onCIDR := d.Get("on_cidr_blocks")
-		natReadOnCIDR(onCIDR.([]interface{}), d, m)
+		natReadOnCIDRV6(onCIDR.([]interface{}), d, m)
 	}
 	snatSet := d.Get("snat").(*schema.Set)
 	dnatSet := d.Get("dnat").(*schema.Set)
@@ -184,7 +164,7 @@ func resourceNatRead(d *schema.ResourceData, m interface{}) error {
 
 }
 
-func resourceNatUpdate(d *schema.ResourceData, m interface{}) error {
+func resourceNatIPv6Update(d *schema.ResourceData, m interface{}) error {
 	if d.HasChange("name") {
 		o, n := d.GetChange("name")
 		if o != "" {
@@ -194,51 +174,51 @@ func resourceNatUpdate(d *schema.ResourceData, m interface{}) error {
 	if d.HasChange("on_cidr_blocks") {
 		oldOnCIDR, newOnCIDR := d.GetChange("on_cidr_blocks")
 		_, onCIDRRemove := computeAddRemove(oldOnCIDR.([]interface{}), newOnCIDR.([]interface{}))
-		err := natRemoveOnCIDR(onCIDRRemove, d, m)
-		if err != nil {
-			return err
-		}
-		err = natAddOnCIDR(d.Get("on_cidr_blocks").([]interface{}), d, m)
-		if err != nil {
-			return err
-		}
 
+		err := natRemoveOnCIDRV6(onCIDRRemove, d, m)
+		if err != nil {
+			return err
+		}
+		err = natAddOnCIDRV6(d.Get("on_cidr_blocks").([]interface{}), d, m)
+		if err != nil {
+			return err
+		}
 	} else {
-		err := natAddOnCIDR(d.Get("on_cidr_blocks").([]interface{}), d, m)
+		err := natAddOnCIDRV6(d.Get("on_cidr_blocks").([]interface{}), d, m)
 		if err != nil {
 			return err
 		}
 	}
 	client := m.(*Client)
-	err := client.saveV4()
+	err := client.saveV6()
 	if err != nil {
-		return fmt.Errorf("iptables save failed : %s", err)
+		return fmt.Errorf("ip6tables save failed : %s", err)
 	}
 
 	return nil
 }
 
-func resourceNatDelete(d *schema.ResourceData, m interface{}) error {
-	err := natRemoveOnCIDR(d.Get("on_cidr_blocks").([]interface{}), d, m)
+func resourceNatIPv6Delete(d *schema.ResourceData, m interface{}) error {
+	err := natRemoveOnCIDRV6(d.Get("on_cidr_blocks").([]interface{}), d, m)
 	if err != nil {
 		d.SetId(d.Get("name").(string) + "!")
 		return err
 	}
 	client := m.(*Client)
-	err = client.saveV4()
+	err = client.saveV6()
 	if err != nil {
-		return fmt.Errorf("iptables save failed : %s", err)
+		return fmt.Errorf("ip6tables save failed : %s", err)
 	}
 	return nil
 }
 
-func natHash(v interface{}) int {
+func natHashV6(v interface{}) int {
 	var buf bytes.Buffer
 	m := v.(map[string]interface{})
 	buf.WriteString(fmt.Sprintf("%s-", m["to_port"].(string)))
 	p := protocolForValue(m["protocol"].(string))
 	buf.WriteString(fmt.Sprintf("%s-", p))
-	buf.WriteString(fmt.Sprintf("%s-", strings.Replace(m["nat_ip"].(string), "/32", "", -1)))
+	buf.WriteString(fmt.Sprintf("%s-", strings.Replace(m["nat_ip"].(string), "/128", "", -1)))
 	buf.WriteString(fmt.Sprintf("%s-", m["iface"].(string)))
 	buf.WriteString(fmt.Sprintf("%s-", m["position"].(string)))
 	buf.WriteString(fmt.Sprintf("%s-", m["nth_every"].(string)))
@@ -258,12 +238,12 @@ func natHash(v interface{}) int {
 	return hashcode.String(buf.String())
 }
 
-func natReadOnCIDR(onCIDRList []interface{}, d *schema.ResourceData, m interface{}) {
+func natReadOnCIDRV6(onCIDRList []interface{}, d *schema.ResourceData, m interface{}) {
 	for _, cidr := range onCIDRList {
 		if d.HasChange("snat") {
 			oldSnat, _ := d.GetChange("snat")
 			oldSnatSet := oldSnat.(*schema.Set)
-			err := natListCommand(cidr.(string), oldSnatSet.List(), strSnat, httpGet, d, m, false)
+			err := natListCommandV6(cidr.(string), oldSnatSet.List(), strSnat, httpGet, d, m, false)
 			if err != nil {
 				tfErr := d.Set("snat", nil)
 				if tfErr != nil {
@@ -273,7 +253,7 @@ func natReadOnCIDR(onCIDRList []interface{}, d *schema.ResourceData, m interface
 		} else {
 			snat := d.Get("snat")
 			snatSet := snat.(*schema.Set)
-			err := natListCommand(cidr.(string), snatSet.List(), strSnat, httpGet, d, m, false)
+			err := natListCommandV6(cidr.(string), snatSet.List(), strSnat, httpGet, d, m, false)
 			if err != nil {
 				tfErr := d.Set("snat", nil)
 				if tfErr != nil {
@@ -284,7 +264,7 @@ func natReadOnCIDR(onCIDRList []interface{}, d *schema.ResourceData, m interface
 		if d.HasChange("dnat") {
 			oldDnat, _ := d.GetChange("dnat")
 			oldDnatSet := oldDnat.(*schema.Set)
-			err := natListCommand(cidr.(string), oldDnatSet.List(), strDnat, httpGet, d, m, false)
+			err := natListCommandV6(cidr.(string), oldDnatSet.List(), strDnat, httpGet, d, m, false)
 			if err != nil {
 				tfErr := d.Set("dnat", nil)
 				if tfErr != nil {
@@ -294,7 +274,7 @@ func natReadOnCIDR(onCIDRList []interface{}, d *schema.ResourceData, m interface
 		} else {
 			dnat := d.Get("dnat")
 			dnatSet := dnat.(*schema.Set)
-			err := natListCommand(cidr.(string), dnatSet.List(), strDnat, httpGet, d, m, false)
+			err := natListCommandV6(cidr.(string), dnatSet.List(), strDnat, httpGet, d, m, false)
 			if err != nil {
 				tfErr := d.Set("dnat", nil)
 				if tfErr != nil {
@@ -305,12 +285,12 @@ func natReadOnCIDR(onCIDRList []interface{}, d *schema.ResourceData, m interface
 	}
 }
 
-func natRemoveOnCIDR(onCIDRList []interface{}, d *schema.ResourceData, m interface{}) error {
+func natRemoveOnCIDRV6(onCIDRList []interface{}, d *schema.ResourceData, m interface{}) error {
 	for _, cidr := range onCIDRList {
 		if d.HasChange("snat") {
 			oldSnat, _ := d.GetChange("snat")
 			oldSnatSet := oldSnat.(*schema.Set)
-			err := natListCommand(cidr.(string), oldSnatSet.List(), strSnat, httpDel, d, m, false)
+			err := natListCommandV6(cidr.(string), oldSnatSet.List(), strSnat, httpDel, d, m, false)
 			if err != nil {
 				return err
 			}
@@ -318,7 +298,7 @@ func natRemoveOnCIDR(onCIDRList []interface{}, d *schema.ResourceData, m interfa
 		} else {
 			snat := d.Get("snat")
 			snatSet := snat.(*schema.Set)
-			err := natListCommand(cidr.(string), snatSet.List(), strSnat, httpDel, d, m, false)
+			err := natListCommandV6(cidr.(string), snatSet.List(), strSnat, httpDel, d, m, false)
 			if err != nil {
 				return err
 			}
@@ -326,7 +306,7 @@ func natRemoveOnCIDR(onCIDRList []interface{}, d *schema.ResourceData, m interfa
 		if d.HasChange("dnat") {
 			oldDnat, _ := d.GetChange("dnat")
 			oldDnatSet := oldDnat.(*schema.Set)
-			err := natListCommand(cidr.(string), oldDnatSet.List(), strDnat, httpDel, d, m, false)
+			err := natListCommandV6(cidr.(string), oldDnatSet.List(), strDnat, httpDel, d, m, false)
 			if err != nil {
 				return err
 			}
@@ -334,7 +314,7 @@ func natRemoveOnCIDR(onCIDRList []interface{}, d *schema.ResourceData, m interfa
 		} else {
 			dnat := d.Get("dnat")
 			dnatSet := dnat.(*schema.Set)
-			err := natListCommand(cidr.(string), dnatSet.List(), strDnat, httpDel, d, m, false)
+			err := natListCommandV6(cidr.(string), dnatSet.List(), strDnat, httpDel, d, m, false)
 			if err != nil {
 				return err
 			}
@@ -343,9 +323,9 @@ func natRemoveOnCIDR(onCIDRList []interface{}, d *schema.ResourceData, m interfa
 	return nil
 }
 
-func natAddOnCIDR(onCIDRList []interface{}, d *schema.ResourceData, m interface{}) error {
+func natAddOnCIDRV6(onCIDRList []interface{}, d *schema.ResourceData, m interface{}) error {
 	for _, cidr := range onCIDRList {
-		err := checkCIDRBlocksString(cidr.(string), ipv4ver)
+		err := checkCIDRBlocksString(cidr.(string), ipv6ver)
 		if err != nil {
 			return err
 		}
@@ -356,19 +336,19 @@ func natAddOnCIDR(onCIDRList []interface{}, d *schema.ResourceData, m interface{
 			oldSnatSetDiff := oldSnatSet.Difference(newSnatSet)
 			newSnatSetDiff := newSnatSet.Difference(oldSnatSet)
 
-			oldSnatSetDiffExpanded := expandCIDRInNatList(oldSnatSetDiff.List(), strSnat, ipv4ver)
-			newSnatSetDiffExpanded := expandCIDRInNatList(newSnatSetDiff.List(), strSnat, ipv4ver)
+			oldSnatSetDiffExpanded := expandCIDRInNatList(oldSnatSetDiff.List(), strSnat, ipv6ver)
+			newSnatSetDiffExpanded := expandCIDRInNatList(newSnatSetDiff.List(), strSnat, ipv6ver)
 			oldSnatSetExpandedRemove := computeOutSlicesOfMap(oldSnatSetDiffExpanded, newSnatSetDiffExpanded)
 
 			err := checkNat(newSnatSet.List())
 			if err != nil {
 				return err
 			}
-			err = natListCommand(cidr.(string), oldSnatSetExpandedRemove, strSnat, httpDel, d, m, true)
+			err = natListCommandV6(cidr.(string), oldSnatSetExpandedRemove, strSnat, httpDel, d, m, true)
 			if err != nil {
 				return err
 			}
-			err = natListCommand(cidr.(string), newSnatSet.List(), strSnat, httpPut, d, m, false)
+			err = natListCommandV6(cidr.(string), newSnatSet.List(), strSnat, httpPut, d, m, false)
 			if err != nil {
 				return err
 			}
@@ -379,7 +359,7 @@ func natAddOnCIDR(onCIDRList []interface{}, d *schema.ResourceData, m interface{
 			if err != nil {
 				return err
 			}
-			err = natListCommand(cidr.(string), snatSet.List(), strSnat, httpPut, d, m, false)
+			err = natListCommandV6(cidr.(string), snatSet.List(), strSnat, httpPut, d, m, false)
 			if err != nil {
 				return err
 			}
@@ -392,22 +372,23 @@ func natAddOnCIDR(onCIDRList []interface{}, d *schema.ResourceData, m interface{
 			oldDnatSetDiff := oldDnatSet.Difference(newDnatSet)
 			newDnatSetDiff := newDnatSet.Difference(oldDnatSet)
 
-			oldDnatSetDiffExpand := expandCIDRInNatList(oldDnatSetDiff.List(), strDnat, ipv4ver)
-			newDnatSetDiffExpand := expandCIDRInNatList(newDnatSetDiff.List(), strDnat, ipv4ver)
-			oldDnatSetExpandedRemove := computeOutSlicesOfMap(oldDnatSetDiffExpand, newDnatSetDiffExpand)
+			oldDnatSetDiffExpanded := expandCIDRInNatList(oldDnatSetDiff.List(), strDnat, ipv6ver)
+			newDnatSetDiffExpanded := expandCIDRInNatList(newDnatSetDiff.List(), strDnat, ipv6ver)
+			oldDnatSetExpandedRemove := computeOutSlicesOfMap(oldDnatSetDiffExpanded, newDnatSetDiffExpanded)
 
 			err := checkNat(newDnatSet.List())
 			if err != nil {
 				return err
 			}
-			err = natListCommand(cidr.(string), oldDnatSetExpandedRemove, strDnat, httpDel, d, m, true)
+			err = natListCommandV6(cidr.(string), oldDnatSetExpandedRemove, strDnat, httpDel, d, m, true)
 			if err != nil {
 				return err
 			}
-			err = natListCommand(cidr.(string), newDnatSet.List(), strDnat, httpPut, d, m, false)
+			err = natListCommandV6(cidr.(string), newDnatSet.List(), strDnat, httpPut, d, m, false)
 			if err != nil {
 				return err
 			}
+
 		} else {
 			dnat := d.Get("dnat")
 			dnatSet := dnat.(*schema.Set)
@@ -415,7 +396,7 @@ func natAddOnCIDR(onCIDRList []interface{}, d *schema.ResourceData, m interface{
 			if err != nil {
 				return err
 			}
-			err = natListCommand(cidr.(string), dnatSet.List(), strDnat, httpPut, d, m, false)
+			err = natListCommandV6(cidr.(string), dnatSet.List(), strDnat, httpPut, d, m, false)
 			if err != nil {
 				return err
 			}
@@ -424,7 +405,7 @@ func natAddOnCIDR(onCIDRList []interface{}, d *schema.ResourceData, m interface{
 	return nil
 }
 
-func natListCommand(onCIDR string, natList []interface{}, way string, method string, d *schema.ResourceData, m interface{}, cidrExpanded bool) error {
+func natListCommandV6(onCIDR string, natList []interface{}, way string, method string, d *schema.ResourceData, m interface{}, cidrExpanded bool) error {
 	switch method {
 	case httpGet:
 		if cidrExpanded {
@@ -433,9 +414,9 @@ func natListCommand(onCIDR string, natList []interface{}, way string, method str
 		var saves []map[string]interface{}
 		for _, natElement := range natList {
 			natOK := true
-			natExpanded := expandCIDRInNat(natElement, way, ipv4ver)
+			natExpanded := expandCIDRInNat(natElement, way, ipv6ver)
 			for _, natExpandedElement := range natExpanded {
-				err := natCmd(onCIDR, natExpandedElement, httpGet, m)
+				err := natCmdV6(onCIDR, natExpandedElement, httpGet, m)
 				if err != nil {
 					natOK = false
 				}
@@ -460,16 +441,16 @@ func natListCommand(onCIDR string, natList []interface{}, way string, method str
 	case httpDel:
 		if cidrExpanded {
 			for _, natElement := range natList {
-				err := natCmd(onCIDR, natElement, httpDel, m)
+				err := natCmdV6(onCIDR, natElement, httpDel, m)
 				if err != nil {
 					return err
 				}
 			}
 		} else {
 			for _, natElement := range natList {
-				natExpanded := expandCIDRInNat(natElement, way, ipv4ver)
+				natExpanded := expandCIDRInNat(natElement, way, ipv6ver)
 				for _, natExpandedElement := range natExpanded {
-					err := natCmd(onCIDR, natExpandedElement, httpDel, m)
+					err := natCmdV6(onCIDR, natExpandedElement, httpDel, m)
 					if err != nil {
 						return err
 					}
@@ -480,24 +461,24 @@ func natListCommand(onCIDR string, natList []interface{}, way string, method str
 	case httpPut:
 		if cidrExpanded {
 			for _, natElement := range natList {
-				err := checkCIDRBlocksInMap(natElement.(map[string]interface{}), ipv4ver)
+				err := checkCIDRBlocksInMap(natElement.(map[string]interface{}), ipv6ver)
 				if err != nil {
 					return err
 				}
-				err = natCmd(onCIDR, natElement, httpPut, m)
+				err = natCmdV6(onCIDR, natElement, httpPut, m)
 				if err != nil {
 					return err
 				}
 			}
 		} else {
 			for _, natElement := range natList {
-				natExpand := expandCIDRInNat(natElement, way, ipv4ver)
+				natExpand := expandCIDRInNat(natElement, way, ipv6ver)
 				for _, natExpandElement := range natExpand {
-					err := checkCIDRBlocksInMap(natExpandElement.(map[string]interface{}), ipv4ver)
+					err := checkCIDRBlocksInMap(natExpandElement.(map[string]interface{}), ipv6ver)
 					if err != nil {
 						return err
 					}
-					err = natCmd(onCIDR, natExpandElement, httpPut, m)
+					err = natCmdV6(onCIDR, natExpandElement, httpPut, m)
 					if err != nil {
 						return err
 					}
@@ -509,14 +490,22 @@ func natListCommand(onCIDR string, natList []interface{}, way string, method str
 	return fmt.Errorf("internal error : unknown method for natListCommand")
 }
 
-func natCmd(onCIDR string, nat interface{}, method string, m interface{}) error {
+func natCmdV6(onCIDR string, nat interface{}, method string, m interface{}) error {
 	client := m.(*Client)
+	if !client.IPv6 {
+		return fmt.Errorf("ipv6 not enable on provider")
+	}
 
 	ma := nat.(map[string]interface{})
+	err := checkCIDRBlocksInMap(ma, ipv6ver)
+	if err != nil {
+		return err
+	}
 	var dstOk string
 	var srcOk string
 	var natRule Rule
 	var natRuleNoPos Rule
+
 	if (ma["to_port"].(string) != "0") && (ma["protocol"].(string) == strAll) {
 		return fmt.Errorf("need protocol for to_port specification")
 	}
@@ -526,13 +515,13 @@ func natCmd(onCIDR string, nat interface{}, method string, m interface{}) error 
 		if maskOk {
 			srcOk = onCIDR
 		} else {
-			srcOk = strings.Join([]string{onCIDR, "/32"}, "")
+			srcOk = strings.Join([]string{onCIDR, "/128"}, "")
 		}
 		maskOk = strings.Contains(ma["cidr_blocks"].(string), "/")
 		if maskOk {
 			dstOk = ma["cidr_blocks"].(string)
 		} else {
-			dstOk = strings.Join([]string{ma["cidr_blocks"].(string), "/32"}, "")
+			dstOk = strings.Join([]string{ma["cidr_blocks"].(string), "/128"}, "")
 		}
 		natRule = Rule{
 			Action:    ma["action"].(string),
@@ -542,7 +531,7 @@ func natCmd(onCIDR string, nat interface{}, method string, m interface{}) error 
 			IPSrc:     strings.Replace(srcOk, "/", "_", -1),
 			IPDst:     strings.Replace(dstOk, "/", "_", -1),
 			Dports:    ma["to_port"].(string),
-			IPNat:     strings.Replace(ma["nat_ip"].(string), "/32", "", -1),
+			IPNat:     strings.Replace(ma["nat_ip"].(string), "/128", "", -1),
 			NthEvery:  ma["nth_every"].(string),
 			NthPacket: ma["nth_packet"].(string),
 			Position:  ma["position"].(string),
@@ -556,7 +545,7 @@ func natCmd(onCIDR string, nat interface{}, method string, m interface{}) error 
 			IPSrc:     strings.Replace(srcOk, "/", "_", -1),
 			IPDst:     strings.Replace(dstOk, "/", "_", -1),
 			Dports:    ma["to_port"].(string),
-			IPNat:     strings.Replace(ma["nat_ip"].(string), "/32", "", -1),
+			IPNat:     strings.Replace(ma["nat_ip"].(string), "/128", "", -1),
 			NthEvery:  ma["nth_every"].(string),
 			NthPacket: ma["nth_packet"].(string),
 			Position:  "?",
@@ -567,13 +556,13 @@ func natCmd(onCIDR string, nat interface{}, method string, m interface{}) error 
 		if maskOk {
 			dstOk = onCIDR
 		} else {
-			dstOk = strings.Join([]string{onCIDR, "/32"}, "")
+			dstOk = strings.Join([]string{onCIDR, "/128"}, "")
 		}
 		maskOk = strings.Contains(ma["cidr_blocks"].(string), "/")
 		if maskOk {
 			srcOk = ma["cidr_blocks"].(string)
 		} else {
-			srcOk = strings.Join([]string{ma["cidr_blocks"].(string), "/32"}, "")
+			srcOk = strings.Join([]string{ma["cidr_blocks"].(string), "/128"}, "")
 		}
 		natRule = Rule{
 			Action:    ma["action"].(string),
@@ -583,7 +572,7 @@ func natCmd(onCIDR string, nat interface{}, method string, m interface{}) error 
 			IPSrc:     strings.Replace(srcOk, "/", "_", -1),
 			IPDst:     strings.Replace(dstOk, "/", "_", -1),
 			Dports:    ma["to_port"].(string),
-			IPNat:     strings.Replace(ma["nat_ip"].(string), "/32", "", -1),
+			IPNat:     strings.Replace(ma["nat_ip"].(string), "/128", "", -1),
 			NthEvery:  ma["nth_every"].(string),
 			NthPacket: ma["nth_packet"].(string),
 			Position:  ma["position"].(string),
@@ -597,7 +586,7 @@ func natCmd(onCIDR string, nat interface{}, method string, m interface{}) error 
 			IPSrc:     strings.Replace(srcOk, "/", "_", -1),
 			IPDst:     strings.Replace(dstOk, "/", "_", -1),
 			Dports:    ma["to_port"].(string),
-			IPNat:     strings.Replace(ma["nat_ip"].(string), "/32", "", -1),
+			IPNat:     strings.Replace(ma["nat_ip"].(string), "/128", "", -1),
 			NthEvery:  ma["nth_every"].(string),
 			NthPacket: ma["nth_packet"].(string),
 			Position:  "?",
@@ -607,51 +596,51 @@ func natCmd(onCIDR string, nat interface{}, method string, m interface{}) error 
 
 	switch method {
 	case httpDel:
-		natExistsNoPos, err := client.natAPIV4(natRuleNoPos, httpGet)
+		natExistsNoPos, err := client.natAPIV6(natRuleNoPos, httpGet)
 		if err != nil {
 			return fmt.Errorf("check rules nat for %s %v failed : %s", onCIDR, natRuleNoPos, err)
 		}
 		if natExistsNoPos {
-			ret, err := client.natAPIV4(natRuleNoPos, httpDel)
+			ret, err := client.natAPIV6(natRuleNoPos, httpDel)
 			if !ret || err != nil {
 				return fmt.Errorf("delete rules nat %s %v failed : %s", onCIDR, natRuleNoPos, err)
 			}
 		}
 	case httpPut:
-		natExists, err := client.natAPIV4(natRule, httpGet)
+		natExists, err := client.natAPIV6(natRule, httpGet)
 		if err != nil {
 			return fmt.Errorf("check rules nat for %s %v failed : %s", onCIDR, natRule, err)
 		}
 		if !natExists {
 			if ma["position"].(string) != "?" {
-				natExistsNoPos, err := client.natAPIV4(natRuleNoPos, httpGet)
+				natExistsNoPos, err := client.natAPIV6(natRuleNoPos, httpGet)
 				if err != nil {
 					return fmt.Errorf("check rules nat for %s %v failed : %s", onCIDR, natRuleNoPos, err)
 				}
 				if natExistsNoPos {
-					ret, err := client.natAPIV4(natRuleNoPos, httpDel)
+					ret, err := client.natAPIV6(natRuleNoPos, httpDel)
 					if !ret || err != nil {
 						return fmt.Errorf("delete rules with bad position on nat %s %v failed : %s", onCIDR, natRuleNoPos, err)
 					}
-					ret, err = client.natAPIV4(natRule, httpPut)
+					ret, err = client.natAPIV6(natRule, httpPut)
 					if !ret || err != nil {
 						return fmt.Errorf("add rules nat %s %v failed : %s", onCIDR, natRule, err)
 					}
 				} else {
-					ret, err := client.natAPIV4(natRule, httpPut)
+					ret, err := client.natAPIV6(natRule, httpPut)
 					if !ret || err != nil {
 						return fmt.Errorf("add rules nat %s %v failed : %s", onCIDR, natRule, err)
 					}
 				}
 			} else {
-				ret, err := client.natAPIV4(natRule, httpPut)
+				ret, err := client.natAPIV6(natRule, httpPut)
 				if !ret || err != nil {
 					return fmt.Errorf("add rules nat %s %v failed : %s", onCIDR, natRule, err)
 				}
 			}
 		}
 	case httpGet:
-		natExists, err := client.natAPIV4(natRule, httpGet)
+		natExists, err := client.natAPIV6(natRule, httpGet)
 		if err != nil {
 			return fmt.Errorf("check rules nat for %s %v failed : %s", onCIDR, natRule, err)
 		}

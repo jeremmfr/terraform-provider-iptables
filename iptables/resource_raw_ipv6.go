@@ -10,12 +10,12 @@ import (
 	"github.com/hashicorp/terraform/helper/schema"
 )
 
-func resourceRaw() *schema.Resource {
+func resourceRawIPv6() *schema.Resource {
 	return &schema.Resource{
-		Create: resourceRawCreate,
-		Read:   resourceRawRead,
-		Update: resourceRawUpdate,
-		Delete: resourceRawDelete,
+		Create: resourceRawIPv6Create,
+		Read:   resourceRawIPv6Read,
+		Update: resourceRawIPv6Update,
+		Delete: resourceRawIPv6Delete,
 		Schema: map[string]*schema.Schema{
 			"name": {
 				Type:     schema.TypeString,
@@ -51,15 +51,15 @@ func resourceRaw() *schema.Resource {
 							Type:         schema.TypeString,
 							Optional:     true,
 							StateFunc:    protocolStateFunc,
-							Default:      "0.0.0.0/0",
-							ValidateFunc: validateCIDRNetworkOrHostV4(),
+							Default:      "::/0",
+							ValidateFunc: validateCIDRNetworkOrHostV6(),
 						},
 						"dst_cidr_blocks": {
 							Type:         schema.TypeString,
 							Optional:     true,
 							StateFunc:    protocolStateFunc,
-							Default:      "0.0.0.0/0",
-							ValidateFunc: validateCIDRNetworkOrHostV4(),
+							Default:      "::/0",
+							ValidateFunc: validateCIDRNetworkOrHostV6(),
 						},
 						"iface_out": {
 							Type:      schema.TypeString,
@@ -110,8 +110,8 @@ func resourceRaw() *schema.Resource {
 	}
 }
 
-func resourceRawCreate(d *schema.ResourceData, m interface{}) error {
-	err := resourceRawUpdate(d, m)
+func resourceRawIPv6Create(d *schema.ResourceData, m interface{}) error {
+	err := resourceRawIPv6Update(d, m)
 	if err != nil {
 		return err
 	}
@@ -119,11 +119,11 @@ func resourceRawCreate(d *schema.ResourceData, m interface{}) error {
 	return nil
 }
 
-func resourceRawRead(d *schema.ResourceData, m interface{}) error {
+func resourceRawIPv6Read(d *schema.ResourceData, m interface{}) error {
 	if d.HasChange("rule") {
 		oraw, _ := d.GetChange("rule")
 		osraw := oraw.(*schema.Set)
-		err := rawRule(osraw.List(), httpGet, m)
+		err := rawRuleV6(osraw.List(), httpGet, m)
 		if err != nil {
 			d.SetId("")
 		}
@@ -131,7 +131,7 @@ func resourceRawRead(d *schema.ResourceData, m interface{}) error {
 		log.Print("no change")
 		oraw := d.Get("rule")
 		osraw := oraw.(*schema.Set)
-		err := rawRule(osraw.List(), httpGet, m)
+		err := rawRuleV6(osraw.List(), httpGet, m)
 		if err != nil {
 			d.SetId("")
 		}
@@ -139,7 +139,7 @@ func resourceRawRead(d *schema.ResourceData, m interface{}) error {
 	return nil
 }
 
-func resourceRawUpdate(d *schema.ResourceData, m interface{}) error {
+func resourceRawIPv6Update(d *schema.ResourceData, m interface{}) error {
 	if d.HasChange("name") {
 		o, n := d.GetChange("name")
 		if o != "" {
@@ -154,41 +154,44 @@ func resourceRawUpdate(d *schema.ResourceData, m interface{}) error {
 		newRuleSetDiff := newRuleSet.Difference(oldRuleSet)
 
 		oldRuleSetRemove := computeOutSlicesOfMap(oldRuleSetDiff.List(), newRuleSetDiff.List())
-		err := rawRule(oldRuleSetRemove, httpDel, m)
+		err := rawRuleV6(oldRuleSetRemove, httpDel, m)
 		if err != nil {
 			return err
 		}
-		err = rawRule(newRuleSet.List(), httpPut, m)
+		err = rawRuleV6(newRuleSet.List(), httpPut, m)
 		if err != nil {
 			return err
 		}
 
 	}
 	client := m.(*Client)
-	err := client.saveV4()
+	err := client.saveV6()
 	if err != nil {
-		return fmt.Errorf("iptables save failed : %s", err)
+		return fmt.Errorf("ip6tables save failed : %s", err)
 	}
 	return nil
 }
 
-func resourceRawDelete(d *schema.ResourceData, m interface{}) error {
+func resourceRawIPv6Delete(d *schema.ResourceData, m interface{}) error {
 	rule := d.Get("rule")
 	ruleSet := rule.(*schema.Set)
-	err := rawRule(ruleSet.List(), httpDel, m)
+	err := rawRuleV6(ruleSet.List(), httpDel, m)
 	if err != nil {
 		return err
 	}
 	client := m.(*Client)
-	err = client.saveV4()
+	err = client.saveV6()
 	if err != nil {
-		return fmt.Errorf("iptables save failed : %s", err)
+		return fmt.Errorf("ip6tables save failed : %s", err)
 	}
 	return nil
 }
 
-func rawRule(ruleList []interface{}, method string, m interface{}) error {
+func rawRuleV6(ruleList []interface{}, method string, m interface{}) error {
 	client := m.(*Client)
+	if !client.IPv6 {
+		return fmt.Errorf("ipv6 not enable on provider")
+	}
 
 	for _, rule := range ruleList {
 		ma := rule.(map[string]interface{})
@@ -199,13 +202,13 @@ func rawRule(ruleList []interface{}, method string, m interface{}) error {
 
 		matched := strings.Contains(ma["src_cidr_blocks"].(string), "/")
 		if !matched {
-			srcOk = strings.Join([]string{ma["src_cidr_blocks"].(string), "/32"}, "")
+			srcOk = strings.Join([]string{ma["src_cidr_blocks"].(string), "/128"}, "")
 		} else {
 			srcOk = ma["src_cidr_blocks"].(string)
 		}
 		matched = strings.Contains(ma["dst_cidr_blocks"].(string), "/")
 		if !matched {
-			dstOk = strings.Join([]string{ma["dst_cidr_blocks"].(string), "/32"}, "")
+			dstOk = strings.Join([]string{ma["dst_cidr_blocks"].(string), "/128"}, "")
 		} else {
 			dstOk = ma["dst_cidr_blocks"].(string)
 		}
@@ -259,53 +262,54 @@ func rawRule(ruleList []interface{}, method string, m interface{}) error {
 			Logprefix: logprefixOk,
 			Tcpmss:    ma["tcpmss"].(string),
 		}
+
 		switch method {
 		case httpDel:
-			ruleexistsNoPos, err := client.rawAPIV4(ruleNoPos, httpGet)
+			ruleexistsNoPos, err := client.rawAPIV6(ruleNoPos, httpGet)
 			if err != nil {
 				return fmt.Errorf("check rules on raw for %s failed : %s", ma, err)
 			}
 			if ruleexistsNoPos {
-				ret, err := client.rawAPIV4(ruleNoPos, httpDel)
+				ret, err := client.rawAPIV6(ruleNoPos, httpDel)
 				if !ret || err != nil {
 					return fmt.Errorf("delete rules on raw %s failed : %s", ma, err)
 				}
 			}
 		case httpPut:
-			ruleexists, err := client.rawAPIV4(rule, httpGet)
+			ruleexists, err := client.rawAPIV6(rule, httpGet)
 			if err != nil {
 				return fmt.Errorf("check rules on raw for %s failed : %s", ma, err)
 			}
 			if !ruleexists {
 				if ma["position"].(string) != "?" {
-					ruleexistsNoPos, err := client.rawAPIV4(ruleNoPos, httpGet)
+					ruleexistsNoPos, err := client.rawAPIV6(ruleNoPos, httpGet)
 					if err != nil {
 						return fmt.Errorf("check rules on raw for %s failed : %s", ma, err)
 					}
 					if ruleexistsNoPos {
-						ret, err := client.rawAPIV4(ruleNoPos, httpDel)
+						ret, err := client.rawAPIV6(ruleNoPos, httpDel)
 						if !ret || err != nil {
 							return fmt.Errorf("delete rules with bad position on raw %s failed : %s", ma, err)
 						}
-						ret, err = client.rawAPIV4(rule, httpPut)
+						ret, err = client.rawAPIV6(rule, httpPut)
 						if !ret || err != nil {
 							return fmt.Errorf("add rules on raw %s failed : %s", ma, err)
 						}
 					} else {
-						ret, err := client.rawAPIV4(rule, httpPut)
+						ret, err := client.rawAPIV6(rule, httpPut)
 						if !ret || err != nil {
-							return fmt.Errorf("add rules on raw %s failed %s", ma, err)
+							return fmt.Errorf("add rules on raw %s failed : %s", ma, err)
 						}
 					}
 				} else {
-					ret, err := client.rawAPIV4(rule, httpPut)
+					ret, err := client.rawAPIV6(rule, httpPut)
 					if !ret || err != nil {
 						return fmt.Errorf("add rules on raw %s failed : %s", ma, err)
 					}
 				}
 			}
 		case httpGet:
-			ruleexists, err := client.rawAPIV4(rule, httpGet)
+			ruleexists, err := client.rawAPIV6(rule, httpGet)
 			if err != nil {
 				return fmt.Errorf("check rules on raw for %s failed : %s", ma, err)
 			}

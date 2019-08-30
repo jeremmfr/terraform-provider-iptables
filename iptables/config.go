@@ -1,20 +1,3 @@
-// Copyright 2017 Jeremy Muriel
-//
-// This file is part of terraform-provider-iptables.
-//
-// terraform-provider-iptables is free software: you can redistribute it and/or modify
-// it under the terms of the GNU General Public License as published by
-// the Free Software Foundation, either version 3 of the License, or
-// (at your option) any later version.
-//
-// Foobar is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-// GNU General Public License for more details.
-//
-// You should have received a copy of the GNU General Public License
-// along with terraform-provider-iptables.  If not, see <http://www.gnu.org/licenses/>.
-
 package iptables
 
 import (
@@ -24,50 +7,54 @@ import (
 
 	vaultapi "github.com/hashicorp/vault/api"
 )
-type Config struct {
-	firewall_ip			string
-	firewall_port_api	int
-	allowed_ips			[]interface{}
-	https				bool
-	insecure			bool
-	logname				string
-	login				string
-	password			string
-	vault_enable		bool
-	vault_path			string
-	vault_key			string
-}	
 
-func (c *Config)  Client() (*Client, error) {
+// Config provider
+type Config struct {
+	https           bool
+	ipv6Enable      bool
+	insecure        bool
+	vaultEnable     bool
+	firewallPortAPI int
+	firewallIP      string
+	logname         string
+	login           string
+	password        string
+	vaultPath       string
+	vaultKey        string
+	allowedIPs      []interface{}
+}
+
+// Client configures with Config
+func (c *Config) Client() (*Client, error) {
 	var client *Client
 	var err error
-	if c.vault_enable == false {
-		client, err = NewClient(c.firewall_ip, c.firewall_port_api, c.allowed_ips, c.https, c.insecure, c.logname, c.login, c.password)
+	if !c.vaultEnable {
+		client, err = NewClient(c.firewallIP, c.firewallPortAPI, c.allowedIPs, c.https, c.insecure, c.logname, c.login, c.password, c.ipv6Enable)
 	} else {
-		login, password := GetloginVault(c.vault_path, c.firewall_ip, c.vault_key)
-		client, err = NewClient(c.firewall_ip, c.firewall_port_api, c.allowed_ips, c.https, c.insecure, c.logname, login, password)
+		login, password := getloginVault(c.vaultPath, c.firewallIP, c.vaultKey)
+		client, err = NewClient(c.firewallIP, c.firewallPortAPI, c.allowedIPs, c.https, c.insecure, c.logname, login, password, c.ipv6Enable)
 	}
 	if err != nil {
-		return nil, fmt.Errorf("Error setting up firewall client %s", err)
+		return nil, fmt.Errorf("setting up firewall client %s failed", err)
 	}
 
-	log.Printf("[INFO] Firewall client configured for server %s", c.firewall_ip)
+	log.Printf("[INFO] Firewall client configured for server %s", c.firewallIP)
 	return client, nil
 }
 
-func GetloginVault(path string, firewall_ip string, key string) (string,string) {
+func getloginVault(path string, firewallIP string, key string) (string, string) {
 	login := ""
 	password := ""
-	client,err := vaultapi.NewClient(vaultapi.DefaultConfig())
+	client, err := vaultapi.NewClient(vaultapi.DefaultConfig())
 	if err != nil {
-		return "",""
+		return "", ""
 	}
-	
+
 	c := client.Logical()
 	if key != "" {
 		secret, err := c.Read(strings.Join([]string{"/secret/", path, "/", key}, ""))
 		if err != nil {
-			return "",""
+			return "", ""
 		}
 		if secret != nil {
 			for key, value := range secret.Data {
@@ -80,9 +67,9 @@ func GetloginVault(path string, firewall_ip string, key string) (string,string) 
 			}
 		}
 	} else {
-		secret, err := c.Read(strings.Join([]string{"/secret/", path, "/", firewall_ip}, ""))
+		secret, err := c.Read(strings.Join([]string{"/secret/", path, "/", firewallIP}, ""))
 		if err != nil {
-			return "",""
+			return "", ""
 		}
 		if secret != nil {
 			for key, value := range secret.Data {
@@ -95,5 +82,5 @@ func GetloginVault(path string, firewall_ip string, key string) (string,string) 
 			}
 		}
 	}
-	return login,password
+	return login, password
 }

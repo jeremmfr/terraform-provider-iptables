@@ -1,90 +1,91 @@
-// Copyright 2017 Jeremy Muriel
-//
-// This file is part of terraform-provider-iptables.
-//
-// terraform-provider-iptables is free software: you can redistribute it and/or modify
-// it under the terms of the GNU General Public License as published by
-// the Free Software Foundation, either version 3 of the License, or
-// (at your option) any later version.
-//
-// Foobar is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-// GNU General Public License for more details.
-//
-// You should have received a copy of the GNU General Public License
-// along with terraform-provider-iptables.  If not, see <http://www.gnu.org/licenses/>.
-
 package iptables
 
-import(
+import (
 	"os"
 
 	"github.com/hashicorp/terraform/helper/schema"
 	"github.com/hashicorp/terraform/terraform"
 )
 
+const strAll string = "all"
+const httpGet string = "GET"
+const httpPut string = "PUT"
+const httpDel string = "DELETE"
+const wayIngress string = "in"
+const wayEgress string = "out"
+const ipv4All string = "0.0.0.0/0"
+const ipv6All string = "::/0"
+const ipv4ver string = "ipv4"
+const ipv6ver string = "ipv6"
+
+// Provider iptables for terraform
 func Provider() terraform.ResourceProvider {
 	return &schema.Provider{
 		Schema: map[string]*schema.Schema{
 			"firewall_ip": {
-				Type:			schema.TypeString,
-				Required:		true,
+				Type:     schema.TypeString,
+				Required: true,
 			},
 			"port": {
-				Type:			schema.TypeInt,
-				Optional:		true,
-				Default:		8080,
+				Type:     schema.TypeInt,
+				Optional: true,
+				Default:  8080,
 			},
-			"allowed_cidr_blocks": &schema.Schema{
-				Type:			schema.TypeList,
-				Required:		true,
-				Elem:			&schema.Schema{Type: schema.TypeString},
-            },
-			"https": &schema.Schema{
-				Type:		schema.TypeBool,
-				Optional:	true,
-				Default:	false,
+			"allowed_cidr_blocks": {
+				Type:     schema.TypeList,
+				Required: true,
+				Elem:     &schema.Schema{Type: schema.TypeString},
+			},
+			"https": {
+				Type:     schema.TypeBool,
+				Optional: true,
+				Default:  false,
 			},
 			"insecure": {
-				Type:		schema.TypeBool,
-				Optional:	true,
-				Default:	false,
-            },
+				Type:     schema.TypeBool,
+				Optional: true,
+				Default:  false,
+			},
 			"login": {
-				Type:		schema.TypeString,
-				Optional:	true,
-				Default:	"",
-				ConflictsWith:	[]string{"vault_enable"},
+				Type:     schema.TypeString,
+				Optional: true,
 			},
 			"password": {
-				Type:		schema.TypeString,
-				Optional:	true,
-				Default:	"",
-				ConflictsWith:	[]string{"vault_enable"},
+				Type:     schema.TypeString,
+				Optional: true,
 			},
 			"vault_enable": {
-				Type:		schema.TypeBool,
-				Optional:	true,
-				Default:	false,
-				ConflictsWith:	[]string{"login","password"},
+				Type:          schema.TypeBool,
+				Optional:      true,
+				Default:       false,
+				ConflictsWith: []string{"login", "password"},
 			},
 			"vault_path": {
-				Type:		schema.TypeString,
-				Optional:	true,
-				Default:	"lvs",
+				Type:     schema.TypeString,
+				Optional: true,
+				Default:  "lvs",
 			},
 			"vault_key": {
-				Type:		schema.TypeString,
-				Optional:	true,
-				Default:	"",
+				Type:     schema.TypeString,
+				Optional: true,
+				Default:  "",
+			},
+			"ipv6_enable": {
+				Type:     schema.TypeBool,
+				Optional: true,
+				Default:  false,
 			},
 		},
 		ResourcesMap: map[string]*schema.Resource{
-			"iptables_project":		resourceProject(),
-			"iptables_rules":		resourceRules(),
-			"iptables_nat":			resourceNat(),
-			"iptables_raw":			resourceRaw(),
+			"iptables_project": resourceProject(),
+			"iptables_rules":   resourceRules(),
+			"iptables_nat":     resourceNat(),
+			"iptables_raw":     resourceRaw(),
+
+			"iptables_project_ipv6": resourceProjectIPv6(),
+			"iptables_rules_ipv6":   resourceRulesIPv6(),
+			"iptables_nat_ipv6":     resourceNatIPv6(),
+			"iptables_raw_ipv6":     resourceRawIPv6(),
 		},
 		ConfigureFunc: configureProvider,
 	}
@@ -92,17 +93,18 @@ func Provider() terraform.ResourceProvider {
 
 func configureProvider(d *schema.ResourceData) (interface{}, error) {
 	config := Config{
-		firewall_ip:		d.Get("firewall_ip").(string),
-		firewall_port_api:	d.Get("port").(int),
-		allowed_ips:		d.Get("allowed_cidr_blocks").([]interface{}),
-		https:				d.Get("https").(bool),
-		insecure:			d.Get("insecure").(bool),
-		logname:			os.Getenv("USER"),
-		login:				d.Get("login").(string),
-		password:			d.Get("password").(string),
-		vault_enable:		d.Get("vault_enable").(bool),
-		vault_path:			d.Get("vault_path").(string),
-		vault_key:			d.Get("vault_key").(string),
+		firewallIP:      d.Get("firewall_ip").(string),
+		firewallPortAPI: d.Get("port").(int),
+		allowedIPs:      d.Get("allowed_cidr_blocks").([]interface{}),
+		https:           d.Get("https").(bool),
+		insecure:        d.Get("insecure").(bool),
+		logname:         os.Getenv("USER"),
+		login:           d.Get("login").(string),
+		password:        d.Get("password").(string),
+		vaultEnable:     d.Get("vault_enable").(bool),
+		vaultPath:       d.Get("vault_path").(string),
+		vaultKey:        d.Get("vault_key").(string),
+		ipv6Enable:      d.Get("ipv6_enable").(bool),
 	}
 	return config.Client()
 }
