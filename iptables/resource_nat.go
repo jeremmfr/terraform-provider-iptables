@@ -1,20 +1,3 @@
-// Copyright 2017 Jeremy Muriel
-//
-// This file is part of terraform-provider-iptables.
-//
-// terraform-provider-iptables is free software: you can redistribute it and/or modify
-// it under the terms of the GNU General Public License as published by
-// the Free Software Foundation, either version 3 of the License, or
-// (at your option) any later version.
-//
-// Foobar is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-// GNU General Public License for more details.
-//
-// You should have received a copy of the GNU General Public License
-// along with terraform-provider-iptables.  If not, see <http://www.gnu.org/licenses/>.
-
 package iptables
 
 import (
@@ -42,7 +25,7 @@ func resourceNat() *schema.Resource {
 				Required: true,
 			},
 			"on_cidr_blocks": {
-				Type:     schema.TypeList,
+				Type:     schema.TypeSet,
 				Required: true,
 				Elem:     &schema.Schema{Type: schema.TypeString},
 			},
@@ -68,7 +51,7 @@ func resourceNat() *schema.Resource {
 							StateFunc: ifaceStateFunc,
 						},
 						"filter_cidr_blocks": {
-							Type:     schema.TypeList,
+							Type:     schema.TypeSet,
 							Optional: true,
 							Elem:     &schema.Schema{Type: schema.TypeString},
 						},
@@ -122,7 +105,7 @@ func resourceNat() *schema.Resource {
 							StateFunc: ifaceStateFunc,
 						},
 						"filter_cidr_blocks": {
-							Type:     schema.TypeList,
+							Type:     schema.TypeSet,
 							Optional: true,
 							Elem:     &schema.Schema{Type: schema.TypeString},
 						},
@@ -170,14 +153,11 @@ func resourceNatCreate(d *schema.ResourceData, m interface{}) error {
 func resourceNatRead(d *schema.ResourceData, m interface{}) error {
 	if d.HasChange("on_cidr_blocks") {
 		oldOnCIDR, _ := d.GetChange("on_cidr_blocks")
-		natReadOnCIDR(oldOnCIDR.([]interface{}), d, m)
+		natReadOnCIDR(oldOnCIDR.(*schema.Set).List(), d, m)
 	} else {
-		onCIDR := d.Get("on_cidr_blocks")
-		natReadOnCIDR(onCIDR.([]interface{}), d, m)
+		natReadOnCIDR(d.Get("on_cidr_blocks").(*schema.Set).List(), d, m)
 	}
-	snatSet := d.Get("snat").(*schema.Set)
-	dnatSet := d.Get("dnat").(*schema.Set)
-	if (len(snatSet.List()) == 0) && (len(dnatSet.List()) == 0) {
+	if (len(d.Get("snat").(*schema.Set).List()) == 0) && (len(d.Get("dnat").(*schema.Set).List()) == 0) {
 		d.SetId("")
 	}
 	return nil
@@ -191,26 +171,35 @@ func resourceNatUpdate(d *schema.ResourceData, m interface{}) error {
 			d.SetId(n.(string) + "!")
 		}
 	}
+
+	err := checkNatPositionAndCIDRList(d)
+	if err != nil {
+		d.SetId("")
+		return err
+	}
 	if d.HasChange("on_cidr_blocks") {
 		oldOnCIDR, newOnCIDR := d.GetChange("on_cidr_blocks")
-		_, onCIDRRemove := computeAddRemove(oldOnCIDR.([]interface{}), newOnCIDR.([]interface{}))
-		err := natRemoveOnCIDR(onCIDRRemove, d, m)
+		_, onCIDRRemove := computeAddRemove(oldOnCIDR.(*schema.Set).List(), newOnCIDR.(*schema.Set).List())
+		err = natRemoveOnCIDR(onCIDRRemove, d, m)
 		if err != nil {
+			d.SetId("")
 			return err
 		}
-		err = natAddOnCIDR(d.Get("on_cidr_blocks").([]interface{}), d, m)
+		err = natAddOnCIDR(d.Get("on_cidr_blocks").(*schema.Set).List(), d, m)
 		if err != nil {
+			d.SetId("")
 			return err
 		}
 
 	} else {
-		err := natAddOnCIDR(d.Get("on_cidr_blocks").([]interface{}), d, m)
+		err = natAddOnCIDR(d.Get("on_cidr_blocks").(*schema.Set).List(), d, m)
 		if err != nil {
+			d.SetId("")
 			return err
 		}
 	}
 	client := m.(*Client)
-	err := client.saveV4()
+	err = client.saveV4()
 	if err != nil {
 		return fmt.Errorf("iptables save failed : %s", err)
 	}
@@ -219,7 +208,7 @@ func resourceNatUpdate(d *schema.ResourceData, m interface{}) error {
 }
 
 func resourceNatDelete(d *schema.ResourceData, m interface{}) error {
-	err := natRemoveOnCIDR(d.Get("on_cidr_blocks").([]interface{}), d, m)
+	err := natRemoveOnCIDR(d.Get("on_cidr_blocks").(*schema.Set).List(), d, m)
 	if err != nil {
 		d.SetId(d.Get("name").(string) + "!")
 		return err
@@ -245,7 +234,7 @@ func natHash(v interface{}) int {
 	buf.WriteString(fmt.Sprintf("%s-", m["nth_packet"].(string)))
 
 	if v, ok := m["filter_cidr_blocks"]; ok {
-		vs := v.([]interface{})
+		vs := v.(*schema.Set).List()
 		s := make([]string, len(vs))
 		for i, raw := range vs {
 			s[i] = raw.(string)
@@ -262,8 +251,7 @@ func natReadOnCIDR(onCIDRList []interface{}, d *schema.ResourceData, m interface
 	for _, cidr := range onCIDRList {
 		if d.HasChange("snat") {
 			oldSnat, _ := d.GetChange("snat")
-			oldSnatSet := oldSnat.(*schema.Set)
-			err := natListCommand(cidr.(string), oldSnatSet.List(), strSnat, httpGet, d, m, false)
+			err := natListCommand(cidr.(string), oldSnat.(*schema.Set).List(), strSnat, httpGet, d, m, false)
 			if err != nil {
 				tfErr := d.Set("snat", nil)
 				if tfErr != nil {
@@ -272,8 +260,7 @@ func natReadOnCIDR(onCIDRList []interface{}, d *schema.ResourceData, m interface
 			}
 		} else {
 			snat := d.Get("snat")
-			snatSet := snat.(*schema.Set)
-			err := natListCommand(cidr.(string), snatSet.List(), strSnat, httpGet, d, m, false)
+			err := natListCommand(cidr.(string), snat.(*schema.Set).List(), strSnat, httpGet, d, m, false)
 			if err != nil {
 				tfErr := d.Set("snat", nil)
 				if tfErr != nil {
@@ -283,8 +270,7 @@ func natReadOnCIDR(onCIDRList []interface{}, d *schema.ResourceData, m interface
 		}
 		if d.HasChange("dnat") {
 			oldDnat, _ := d.GetChange("dnat")
-			oldDnatSet := oldDnat.(*schema.Set)
-			err := natListCommand(cidr.(string), oldDnatSet.List(), strDnat, httpGet, d, m, false)
+			err := natListCommand(cidr.(string), oldDnat.(*schema.Set).List(), strDnat, httpGet, d, m, false)
 			if err != nil {
 				tfErr := d.Set("dnat", nil)
 				if tfErr != nil {
@@ -293,8 +279,7 @@ func natReadOnCIDR(onCIDRList []interface{}, d *schema.ResourceData, m interface
 			}
 		} else {
 			dnat := d.Get("dnat")
-			dnatSet := dnat.(*schema.Set)
-			err := natListCommand(cidr.(string), dnatSet.List(), strDnat, httpGet, d, m, false)
+			err := natListCommand(cidr.(string), dnat.(*schema.Set).List(), strDnat, httpGet, d, m, false)
 			if err != nil {
 				tfErr := d.Set("dnat", nil)
 				if tfErr != nil {
@@ -309,32 +294,28 @@ func natRemoveOnCIDR(onCIDRList []interface{}, d *schema.ResourceData, m interfa
 	for _, cidr := range onCIDRList {
 		if d.HasChange("snat") {
 			oldSnat, _ := d.GetChange("snat")
-			oldSnatSet := oldSnat.(*schema.Set)
-			err := natListCommand(cidr.(string), oldSnatSet.List(), strSnat, httpDel, d, m, false)
+			err := natListCommand(cidr.(string), oldSnat.(*schema.Set).List(), strSnat, httpDel, d, m, false)
 			if err != nil {
 				return err
 			}
 
 		} else {
 			snat := d.Get("snat")
-			snatSet := snat.(*schema.Set)
-			err := natListCommand(cidr.(string), snatSet.List(), strSnat, httpDel, d, m, false)
+			err := natListCommand(cidr.(string), snat.(*schema.Set).List(), strSnat, httpDel, d, m, false)
 			if err != nil {
 				return err
 			}
 		}
 		if d.HasChange("dnat") {
 			oldDnat, _ := d.GetChange("dnat")
-			oldDnatSet := oldDnat.(*schema.Set)
-			err := natListCommand(cidr.(string), oldDnatSet.List(), strDnat, httpDel, d, m, false)
+			err := natListCommand(cidr.(string), oldDnat.(*schema.Set).List(), strDnat, httpDel, d, m, false)
 			if err != nil {
 				return err
 			}
 
 		} else {
 			dnat := d.Get("dnat")
-			dnatSet := dnat.(*schema.Set)
-			err := natListCommand(cidr.(string), dnatSet.List(), strDnat, httpDel, d, m, false)
+			err := natListCommand(cidr.(string), dnat.(*schema.Set).List(), strDnat, httpDel, d, m, false)
 			if err != nil {
 				return err
 			}
@@ -351,16 +332,14 @@ func natAddOnCIDR(onCIDRList []interface{}, d *schema.ResourceData, m interface{
 		}
 		if d.HasChange("snat") {
 			oldSnat, newSnat := d.GetChange("snat")
-			oldSnatSet := oldSnat.(*schema.Set)
-			newSnatSet := newSnat.(*schema.Set)
-			oldSnatSetDiff := oldSnatSet.Difference(newSnatSet)
-			newSnatSetDiff := newSnatSet.Difference(oldSnatSet)
+			oldSnatSetDiff := oldSnat.(*schema.Set).Difference(newSnat.(*schema.Set))
+			newSnatSetDiff := newSnat.(*schema.Set).Difference(oldSnat.(*schema.Set))
 
 			oldSnatSetDiffExpanded := expandCIDRInNatList(oldSnatSetDiff.List(), strSnat, ipv4ver)
 			newSnatSetDiffExpanded := expandCIDRInNatList(newSnatSetDiff.List(), strSnat, ipv4ver)
 			oldSnatSetExpandedRemove := computeOutSlicesOfMap(oldSnatSetDiffExpanded, newSnatSetDiffExpanded)
 
-			err := checkNat(newSnatSet.List())
+			err := checkNat(newSnat.(*schema.Set).List())
 			if err != nil {
 				return err
 			}
@@ -368,18 +347,16 @@ func natAddOnCIDR(onCIDRList []interface{}, d *schema.ResourceData, m interface{
 			if err != nil {
 				return err
 			}
-			err = natListCommand(cidr.(string), newSnatSet.List(), strSnat, httpPut, d, m, false)
+			err = natListCommand(cidr.(string), newSnat.(*schema.Set).List(), strSnat, httpPut, d, m, false)
 			if err != nil {
 				return err
 			}
 		} else {
-			snat := d.Get("snat")
-			snatSet := snat.(*schema.Set)
-			err := checkNat(snatSet.List())
+			err := checkNat(d.Get("snat").(*schema.Set).List())
 			if err != nil {
 				return err
 			}
-			err = natListCommand(cidr.(string), snatSet.List(), strSnat, httpPut, d, m, false)
+			err = natListCommand(cidr.(string), d.Get("snat").(*schema.Set).List(), strSnat, httpPut, d, m, false)
 			if err != nil {
 				return err
 			}
@@ -387,16 +364,14 @@ func natAddOnCIDR(onCIDRList []interface{}, d *schema.ResourceData, m interface{
 		}
 		if d.HasChange("dnat") {
 			oldDnat, newDnat := d.GetChange("dnat")
-			oldDnatSet := oldDnat.(*schema.Set)
-			newDnatSet := newDnat.(*schema.Set)
-			oldDnatSetDiff := oldDnatSet.Difference(newDnatSet)
-			newDnatSetDiff := newDnatSet.Difference(oldDnatSet)
+			oldDnatSetDiff := oldDnat.(*schema.Set).Difference(newDnat.(*schema.Set))
+			newDnatSetDiff := newDnat.(*schema.Set).Difference(oldDnat.(*schema.Set))
 
 			oldDnatSetDiffExpand := expandCIDRInNatList(oldDnatSetDiff.List(), strDnat, ipv4ver)
 			newDnatSetDiffExpand := expandCIDRInNatList(newDnatSetDiff.List(), strDnat, ipv4ver)
 			oldDnatSetExpandedRemove := computeOutSlicesOfMap(oldDnatSetDiffExpand, newDnatSetDiffExpand)
 
-			err := checkNat(newDnatSet.List())
+			err := checkNat(newDnat.(*schema.Set).List())
 			if err != nil {
 				return err
 			}
@@ -404,18 +379,16 @@ func natAddOnCIDR(onCIDRList []interface{}, d *schema.ResourceData, m interface{
 			if err != nil {
 				return err
 			}
-			err = natListCommand(cidr.(string), newDnatSet.List(), strDnat, httpPut, d, m, false)
+			err = natListCommand(cidr.(string), newDnat.(*schema.Set).List(), strDnat, httpPut, d, m, false)
 			if err != nil {
 				return err
 			}
 		} else {
-			dnat := d.Get("dnat")
-			dnatSet := dnat.(*schema.Set)
-			err := checkNat(dnatSet.List())
+			err := checkNat(d.Get("dnat").(*schema.Set).List())
 			if err != nil {
 				return err
 			}
-			err = natListCommand(cidr.(string), dnatSet.List(), strDnat, httpPut, d, m, false)
+			err = natListCommand(cidr.(string), d.Get("dnat").(*schema.Set).List(), strDnat, httpPut, d, m, false)
 			if err != nil {
 				return err
 			}

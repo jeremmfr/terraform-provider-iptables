@@ -26,7 +26,7 @@ func resourceRules() *schema.Resource {
 				ForceNew: true,
 			},
 			"on_cidr_blocks": {
-				Type:     schema.TypeList,
+				Type:     schema.TypeSet,
 				Required: true,
 				Elem:     &schema.Schema{Type: schema.TypeString},
 			},
@@ -68,7 +68,7 @@ func resourceRules() *schema.Resource {
 							Default:   "all",
 						},
 						"cidr_blocks": {
-							Type:     schema.TypeList,
+							Type:     schema.TypeSet,
 							Optional: true,
 							Elem:     &schema.Schema{Type: schema.TypeString},
 						},
@@ -151,7 +151,7 @@ func resourceRules() *schema.Resource {
 							Default:   "all",
 						},
 						"cidr_blocks": {
-							Type:     schema.TypeList,
+							Type:     schema.TypeSet,
 							Optional: true,
 							Elem:     &schema.Schema{Type: schema.TypeString},
 						},
@@ -215,7 +215,6 @@ func resourceRulesCreate(d *schema.ResourceData, m interface{}) error {
 	d.SetId(d.Get("name").(string) + "!")
 	return nil
 }
-
 func resourceRulesRead(d *schema.ResourceData, m interface{}) error {
 	if d.HasChange("project") {
 		o, _ := d.GetChange("project")
@@ -230,19 +229,15 @@ func resourceRulesRead(d *schema.ResourceData, m interface{}) error {
 
 	if d.HasChange("on_cidr_blocks") {
 		oldOnCIDR, _ := d.GetChange("on_cidr_blocks")
-		rulesReadOnCIDR(oldOnCIDR.([]interface{}), d, m)
+		rulesReadOnCIDR(oldOnCIDR.(*schema.Set).List(), d, m)
 	} else {
-		onCIDR := d.Get("on_cidr_blocks")
-		rulesReadOnCIDR(onCIDR.([]interface{}), d, m)
+		rulesReadOnCIDR(d.Get("on_cidr_blocks").(*schema.Set).List(), d, m)
 	}
-	ingressSet := d.Get("ingress").(*schema.Set)
-	egressSet := d.Get("egress").(*schema.Set)
-	if (len(ingressSet.List()) == 0) && (len(egressSet.List()) == 0) {
+	if (len(d.Get("ingress").(*schema.Set).List()) == 0) && (len(d.Get("egress").(*schema.Set).List()) == 0) {
 		d.SetId("")
 	}
 	return nil
 }
-
 func resourceRulesUpdate(d *schema.ResourceData, m interface{}) error {
 	if d.HasChange("name") {
 		o, n := d.GetChange("name")
@@ -250,37 +245,43 @@ func resourceRulesUpdate(d *schema.ResourceData, m interface{}) error {
 			d.SetId(n.(string) + "!")
 		}
 	}
+
+	err := checkRulesPositionAndCIDRList(d)
+	if err != nil {
+		d.SetId("")
+		return err
+	}
 	if d.HasChange("project") {
 		o, _ := d.GetChange("project")
 		if o != "" {
-			tfErr := d.Set("project", o)
-			if tfErr != nil {
-				panic(tfErr)
-			}
+			d.SetId("")
 			return fmt.Errorf("you can't change project")
 		}
 	}
 
 	if d.HasChange("on_cidr_blocks") {
 		oldOnCIDR, newOnCIDR := d.GetChange("on_cidr_blocks")
-		_, onCIDRRemove := computeAddRemove(oldOnCIDR.([]interface{}), newOnCIDR.([]interface{}))
+		_, onCIDRRemove := computeAddRemove(oldOnCIDR.(*schema.Set).List(), newOnCIDR.(*schema.Set).List())
 
-		err := rulesRemoveOnCIDR(onCIDRRemove, d, m)
+		err = rulesRemoveOnCIDR(onCIDRRemove, d, m)
 		if err != nil {
+			d.SetId("")
 			return err
 		}
-		err = rulesAddOncidr(d.Get("on_cidr_blocks").([]interface{}), d, m)
+		err = rulesAddOncidr(d.Get("on_cidr_blocks").(*schema.Set).List(), d, m)
 		if err != nil {
+			d.SetId("")
 			return err
 		}
 	} else {
-		err := rulesAddOncidr(d.Get("on_cidr_blocks").([]interface{}), d, m)
+		err = rulesAddOncidr(d.Get("on_cidr_blocks").(*schema.Set).List(), d, m)
 		if err != nil {
+			d.SetId("")
 			return err
 		}
 	}
 	client := m.(*Client)
-	err := client.saveV4()
+	err = client.saveV4()
 	if err != nil {
 		return fmt.Errorf("iptables save failed : %s", err)
 	}
@@ -288,7 +289,7 @@ func resourceRulesUpdate(d *schema.ResourceData, m interface{}) error {
 }
 
 func resourceRulesDelete(d *schema.ResourceData, m interface{}) error {
-	err := rulesRemoveOnCIDR(d.Get("on_cidr_blocks").([]interface{}), d, m)
+	err := rulesRemoveOnCIDR(d.Get("on_cidr_blocks").(*schema.Set).List(), d, m)
 	if err != nil {
 		d.SetId(d.Get("name").(string) + "!")
 		return err
@@ -305,8 +306,7 @@ func rulesReadOnCIDR(onCIDRList []interface{}, d *schema.ResourceData, m interfa
 	for _, cidr := range onCIDRList {
 		if d.HasChange("ingress") {
 			oldIngress, _ := d.GetChange("ingress")
-			oldIngressSet := oldIngress.(*schema.Set)
-			err := gressListCommand(cidr.(string), oldIngressSet.List(), wayIngress, httpGet, d, m, false)
+			err := gressListCommand(cidr.(string), oldIngress.(*schema.Set).List(), wayIngress, httpGet, d, m, false)
 			if err != nil {
 				tfErr := d.Set("ingress", nil)
 				if tfErr != nil {
@@ -315,9 +315,7 @@ func rulesReadOnCIDR(onCIDRList []interface{}, d *schema.ResourceData, m interfa
 			}
 
 		} else {
-			ingress := d.Get("ingress")
-			ingressSet := ingress.(*schema.Set)
-			err := gressListCommand(cidr.(string), ingressSet.List(), wayIngress, httpGet, d, m, false)
+			err := gressListCommand(cidr.(string), d.Get("ingress").(*schema.Set).List(), wayIngress, httpGet, d, m, false)
 			if err != nil {
 				tfErr := d.Set("ingress", nil)
 				if tfErr != nil {
@@ -327,8 +325,7 @@ func rulesReadOnCIDR(onCIDRList []interface{}, d *schema.ResourceData, m interfa
 		}
 		if d.HasChange("egress") {
 			oldEgress, _ := d.GetChange("egress")
-			oldEgressSet := oldEgress.(*schema.Set)
-			err := gressListCommand(cidr.(string), oldEgressSet.List(), wayEgress, httpGet, d, m, false)
+			err := gressListCommand(cidr.(string), oldEgress.(*schema.Set).List(), wayEgress, httpGet, d, m, false)
 			if err != nil {
 				tfErr := d.Set("egress", nil)
 				if tfErr != nil {
@@ -337,9 +334,7 @@ func rulesReadOnCIDR(onCIDRList []interface{}, d *schema.ResourceData, m interfa
 			}
 
 		} else {
-			egress := d.Get("egress")
-			egressSet := egress.(*schema.Set)
-			err := gressListCommand(cidr.(string), egressSet.List(), wayEgress, httpGet, d, m, false)
+			err := gressListCommand(cidr.(string), d.Get("egress").(*schema.Set).List(), wayEgress, httpGet, d, m, false)
 			if err != nil {
 				tfErr := d.Set("egress", nil)
 				if tfErr != nil {
@@ -354,30 +349,24 @@ func rulesRemoveOnCIDR(onCIDRList []interface{}, d *schema.ResourceData, m inter
 	for _, cidr := range onCIDRList {
 		if d.HasChange("ingress") {
 			oldIngress, _ := d.GetChange("ingress")
-			oldIngressSet := oldIngress.(*schema.Set)
-			err := gressListCommand(cidr.(string), oldIngressSet.List(), wayIngress, httpDel, d, m, false)
+			err := gressListCommand(cidr.(string), oldIngress.(*schema.Set).List(), wayIngress, httpDel, d, m, false)
 			if err != nil {
 				return err
 			}
 		} else {
-			ingress := d.Get("ingress")
-			ingressSet := ingress.(*schema.Set)
-			err := gressListCommand(cidr.(string), ingressSet.List(), wayIngress, httpDel, d, m, false)
+			err := gressListCommand(cidr.(string), d.Get("ingress").(*schema.Set).List(), wayIngress, httpDel, d, m, false)
 			if err != nil {
 				return err
 			}
 		}
 		if d.HasChange("egress") {
 			oldEgress, _ := d.GetChange("egress")
-			oldEgressSet := oldEgress.(*schema.Set)
-			err := gressListCommand(cidr.(string), oldEgressSet.List(), wayEgress, httpDel, d, m, false)
+			err := gressListCommand(cidr.(string), oldEgress.(*schema.Set).List(), wayEgress, httpDel, d, m, false)
 			if err != nil {
 				return err
 			}
 		} else {
-			egress := d.Get("egress")
-			egressSet := egress.(*schema.Set)
-			err := gressListCommand(cidr.(string), egressSet.List(), wayEgress, httpDel, d, m, false)
+			err := gressListCommand(cidr.(string), d.Get("egress").(*schema.Set).List(), wayEgress, httpDel, d, m, false)
 			if err != nil {
 				return err
 			}
@@ -394,10 +383,8 @@ func rulesAddOncidr(onCIDRList []interface{}, d *schema.ResourceData, m interfac
 		}
 		if d.HasChange("ingress") {
 			oldIngress, newIngress := d.GetChange("ingress")
-			oldIngressSet := oldIngress.(*schema.Set)
-			newIngressSet := newIngress.(*schema.Set)
-			oldIngressSetDiff := oldIngressSet.Difference(newIngressSet)
-			newIngressSetDiff := newIngressSet.Difference(oldIngressSet)
+			oldIngressSetDiff := oldIngress.(*schema.Set).Difference(newIngress.(*schema.Set))
+			newIngressSetDiff := newIngress.(*schema.Set).Difference(oldIngress.(*schema.Set))
 
 			//			Expand for cidr_blocks slices -> string
 			oldIngressSetDiffExpanded := expandCIDRInGressList(oldIngressSetDiff.List(), ipv4ver)
@@ -409,24 +396,20 @@ func rulesAddOncidr(onCIDRList []interface{}, d *schema.ResourceData, m interfac
 			if err != nil {
 				return err
 			}
-			err := gressListCommand(cidr.(string), newIngressSet.List(), wayIngress, httpPut, d, m, false)
+			err := gressListCommand(cidr.(string), newIngress.(*schema.Set).List(), wayIngress, httpPut, d, m, false)
 			if err != nil {
 				return err
 			}
 		} else {
-			ingress := d.Get("ingress")
-			ingressSet := ingress.(*schema.Set)
-			err := gressListCommand(cidr.(string), ingressSet.List(), wayIngress, httpPut, d, m, false)
+			err := gressListCommand(cidr.(string), d.Get("ingress").(*schema.Set).List(), wayIngress, httpPut, d, m, false)
 			if err != nil {
 				return err
 			}
 		}
 		if d.HasChange("egress") {
 			oldEgress, newEgress := d.GetChange("egress")
-			oldEgressSet := oldEgress.(*schema.Set)
-			newEgressSet := newEgress.(*schema.Set)
-			oldEgressSetDiff := oldEgressSet.Difference(newEgressSet)
-			newEgressSetDiff := newEgressSet.Difference(oldEgressSet)
+			oldEgressSetDiff := oldEgress.(*schema.Set).Difference(newEgress.(*schema.Set))
+			newEgressSetDiff := newEgress.(*schema.Set).Difference(oldEgress.(*schema.Set))
 
 			//			Expand for cidr_blocks slices -> string
 			oldEgressSetDiffExpanded := expandCIDRInGressList(oldEgressSetDiff.List(), ipv4ver)
@@ -438,14 +421,12 @@ func rulesAddOncidr(onCIDRList []interface{}, d *schema.ResourceData, m interfac
 			if err != nil {
 				return err
 			}
-			err = gressListCommand(cidr.(string), newEgressSet.List(), wayEgress, httpPut, d, m, false)
+			err = gressListCommand(cidr.(string), newEgress.(*schema.Set).List(), wayEgress, httpPut, d, m, false)
 			if err != nil {
 				return err
 			}
 		} else {
-			egress := d.Get("egress")
-			egressSet := egress.(*schema.Set)
-			err := gressListCommand(cidr.(string), egressSet.List(), wayEgress, httpPut, d, m, false)
+			err := gressListCommand(cidr.(string), d.Get("egress").(*schema.Set).List(), wayEgress, httpPut, d, m, false)
 			if err != nil {
 				return err
 			}

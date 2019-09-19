@@ -146,6 +146,7 @@ func resourceRawIPv6Update(d *schema.ResourceData, m interface{}) error {
 			d.SetId(n.(string) + "!")
 		}
 	}
+
 	if d.HasChange("rule") {
 		oldRule, newRule := d.GetChange("rule")
 		oldRuleSet := oldRule.(*schema.Set)
@@ -156,10 +157,12 @@ func resourceRawIPv6Update(d *schema.ResourceData, m interface{}) error {
 		oldRuleSetRemove := computeOutSlicesOfMap(oldRuleSetDiff.List(), newRuleSetDiff.List())
 		err := rawRuleV6(oldRuleSetRemove, httpDel, m)
 		if err != nil {
+			d.SetId("")
 			return err
 		}
 		err = rawRuleV6(newRuleSet.List(), httpPut, m)
 		if err != nil {
+			d.SetId("")
 			return err
 		}
 

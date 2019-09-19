@@ -29,7 +29,7 @@ func resourceProjectIPv6() *schema.Resource {
 				},
 			},
 			"cidr_blocks": {
-				Type:     schema.TypeList,
+				Type:     schema.TypeSet,
 				Required: true,
 				Elem:     &schema.Schema{Type: schema.TypeString},
 			},
@@ -118,7 +118,7 @@ func resourceProjectIPv6Read(d *schema.ResourceData, m interface{}) error {
 	}
 
 	var listCIDRSet []interface{}
-	for _, cidr := range d.Get("cidr_blocks").([]interface{}) {
+	for _, cidr := range d.Get("cidr_blocks").(*schema.Set).List() {
 		status, err := cidrForProjectV6(cidr.(string), absolute(d.Get("position").(int)), httpGet, d, m)
 		if err == nil && status {
 			listCIDRSet = append(listCIDRSet, cidr.(string))
@@ -145,7 +145,7 @@ func resourceProjectIPv6Update(d *schema.ResourceData, m interface{}) error {
 		positionChange = true
 		oPos, nPos := d.GetChange("position")
 		if oPos.(int) != 0 {
-			for _, cidr := range d.Get("cidr_blocks").([]interface{}) {
+			for _, cidr := range d.Get("cidr_blocks").(*schema.Set).List() {
 				err := checkCIDRBlocksString(cidr.(string), ipv6ver)
 				if err != nil {
 					tfErr := d.Set("position", oPos.(int))
@@ -227,7 +227,7 @@ func resourceProjectIPv6Update(d *schema.ResourceData, m interface{}) error {
 				return fmt.Errorf("insert position in router_chain failed : %s", err)
 			}
 			if !d.HasChange("cidr_blocks") {
-				for _, cidr := range d.Get("cidr_blocks").([]interface{}) {
+				for _, cidr := range d.Get("cidr_blocks").(*schema.Set).List() {
 					err := checkCIDRBlocksString(cidr.(string), ipv6ver)
 					if err != nil {
 						return err
@@ -249,14 +249,14 @@ func resourceProjectIPv6Update(d *schema.ResourceData, m interface{}) error {
 	}
 	if d.HasChange("cidr_blocks") {
 		oldCIDR, newCIDR := d.GetChange("cidr_blocks")
-		_, cidrListRemove := computeAddRemove(oldCIDR.([]interface{}), newCIDR.([]interface{}))
+		_, cidrListRemove := computeAddRemove(oldCIDR.(*schema.Set).List(), newCIDR.(*schema.Set).List())
 		for _, cidr := range cidrListRemove {
 			_, err := cidrForProjectV6(cidr.(string), nPos.(int), httpDel, d, m)
 			if err != nil {
 				return err
 			}
 		}
-		for _, cidr := range d.Get("cidr_blocks").([]interface{}) {
+		for _, cidr := range d.Get("cidr_blocks").(*schema.Set).List() {
 			err := checkCIDRBlocksString(cidr.(string), ipv6ver)
 			if err != nil {
 				return err
@@ -275,7 +275,7 @@ func resourceProjectIPv6Update(d *schema.ResourceData, m interface{}) error {
 	if positionChange {
 		if d.HasChange("cidr_blocks") && oPos.(int) == 0 && nPos.(int) > 0 {
 			oldCIDR, _ := d.GetChange("cidr_blocks")
-			for _, cidr := range oldCIDR.([]interface{}) {
+			for _, cidr := range oldCIDR.(*schema.Set).List() {
 				_, err := cidrForProjectV6(cidr.(string), 0, httpDel, d, m)
 				if err != nil {
 					return err
@@ -283,7 +283,7 @@ func resourceProjectIPv6Update(d *schema.ResourceData, m interface{}) error {
 			}
 		}
 		if nPos.(int) > 0 {
-			for _, cidr := range d.Get("cidr_blocks").([]interface{}) {
+			for _, cidr := range d.Get("cidr_blocks").(*schema.Set).List() {
 				_, err := cidrForProjectV6(cidr.(string), 0, httpDel, d, m)
 				if err != nil {
 					return err
@@ -305,7 +305,7 @@ func resourceProjectIPv6Delete(d *schema.ResourceData, m interface{}) error {
 		return fmt.Errorf("ipv6 not enable on provider")
 	}
 
-	cidrListRemove := d.Get("cidr_blocks").([]interface{})
+	cidrListRemove := d.Get("cidr_blocks").(*schema.Set).List()
 	for _, cidr := range cidrListRemove {
 		_, err := cidrForProjectV6(cidr.(string), absolute(d.Get("position").(int)), httpDel, d, m)
 		if err != nil {

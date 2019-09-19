@@ -32,7 +32,7 @@ func Provider() terraform.ResourceProvider {
 				Default:  8080,
 			},
 			"allowed_cidr_blocks": {
-				Type:     schema.TypeList,
+				Type:     schema.TypeSet,
 				Required: true,
 				Elem:     &schema.Schema{Type: schema.TypeString},
 			},
@@ -95,7 +95,7 @@ func configureProvider(d *schema.ResourceData) (interface{}, error) {
 	config := Config{
 		firewallIP:      d.Get("firewall_ip").(string),
 		firewallPortAPI: d.Get("port").(int),
-		allowedIPs:      d.Get("allowed_cidr_blocks").([]interface{}),
+		allowedIPs:      d.Get("allowed_cidr_blocks").(*schema.Set).List(),
 		https:           d.Get("https").(bool),
 		insecure:        d.Get("insecure").(bool),
 		logname:         os.Getenv("USER"),

@@ -146,6 +146,7 @@ func resourceRawUpdate(d *schema.ResourceData, m interface{}) error {
 			d.SetId(n.(string) + "!")
 		}
 	}
+
 	if d.HasChange("rule") {
 		oldRule, newRule := d.GetChange("rule")
 		oldRuleSet := oldRule.(*schema.Set)
@@ -156,10 +157,12 @@ func resourceRawUpdate(d *schema.ResourceData, m interface{}) error {
 		oldRuleSetRemove := computeOutSlicesOfMap(oldRuleSetDiff.List(), newRuleSetDiff.List())
 		err := rawRule(oldRuleSetRemove, httpDel, m)
 		if err != nil {
+			d.SetId("")
 			return err
 		}
 		err = rawRule(newRuleSet.List(), httpPut, m)
 		if err != nil {
+			d.SetId("")
 			return err
 		}
 
