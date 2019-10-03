@@ -313,7 +313,6 @@ func rulesReadOnCIDR(onCIDRList []interface{}, d *schema.ResourceData, m interfa
 					panic(tfErr)
 				}
 			}
-
 		} else {
 			err := gressListCommand(cidr.(string), d.Get("ingress").(*schema.Set).List(), wayIngress, httpGet, d, m, false)
 			if err != nil {
@@ -332,7 +331,6 @@ func rulesReadOnCIDR(onCIDRList []interface{}, d *schema.ResourceData, m interfa
 					panic(tfErr)
 				}
 			}
-
 		} else {
 			err := gressListCommand(cidr.(string), d.Get("egress").(*schema.Set).List(), wayEgress, httpGet, d, m, false)
 			if err != nil {

@@ -71,7 +71,6 @@ func NewClient(firewallIP string, firewallPortAPI int, allowedIps []interface{},
 
 	// Allow no default rules
 	if os.Getenv("CONFIG_IPTABLES_TERRAFORM_NODEFAULT") == "" {
-
 		checkExistsRouter, err := client.chainAPIV4("router_chain", "GET")
 		if err != nil {
 			return nil, err

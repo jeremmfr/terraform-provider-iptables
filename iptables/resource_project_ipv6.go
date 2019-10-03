@@ -338,7 +338,6 @@ func resourceProjectIPv6Delete(d *schema.ResourceData, m interface{}) error {
 }
 
 func cidrForProjectV6(cidr string, position int, method string, d *schema.ResourceData, m interface{}) (bool, error) {
-
 	routerChain := "router_chain"
 	if position != 0 {
 		routerChain = strings.Join([]string{"router_chain_pos", strconv.Itoa(absolute(d.Get("position").(int)))}, "")
@@ -476,5 +475,4 @@ func insertPosrouterV6(position int, method string, m interface{}) (bool, error)
 		return routeexists, nil
 	}
 	return true, nil
-
 }

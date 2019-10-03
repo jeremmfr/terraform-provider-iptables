@@ -161,7 +161,6 @@ func resourceNatRead(d *schema.ResourceData, m interface{}) error {
 		d.SetId("")
 	}
 	return nil
-
 }
 
 func resourceNatUpdate(d *schema.ResourceData, m interface{}) error {
@@ -190,7 +189,6 @@ func resourceNatUpdate(d *schema.ResourceData, m interface{}) error {
 			d.SetId("")
 			return err
 		}
-
 	} else {
 		err = natAddOnCIDR(d.Get("on_cidr_blocks").(*schema.Set).List(), d, m)
 		if err != nil {
@@ -298,7 +296,6 @@ func natRemoveOnCIDR(onCIDRList []interface{}, d *schema.ResourceData, m interfa
 			if err != nil {
 				return err
 			}
-
 		} else {
 			snat := d.Get("snat")
 			err := natListCommand(cidr.(string), snat.(*schema.Set).List(), strSnat, httpDel, d, m, false)
@@ -312,7 +309,6 @@ func natRemoveOnCIDR(onCIDRList []interface{}, d *schema.ResourceData, m interfa
 			if err != nil {
 				return err
 			}
-
 		} else {
 			dnat := d.Get("dnat")
 			err := natListCommand(cidr.(string), dnat.(*schema.Set).List(), strDnat, httpDel, d, m, false)
@@ -360,7 +356,6 @@ func natAddOnCIDR(onCIDRList []interface{}, d *schema.ResourceData, m interface{
 			if err != nil {
 				return err
 			}
-
 		}
 		if d.HasChange("dnat") {
 			oldDnat, newDnat := d.GetChange("dnat")

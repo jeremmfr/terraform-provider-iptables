@@ -158,7 +158,6 @@ func resourceNatIPv6Read(d *schema.ResourceData, m interface{}) error {
 		d.SetId("")
 	}
 	return nil
-
 }
 
 func resourceNatIPv6Update(d *schema.ResourceData, m interface{}) error {
@@ -293,7 +292,6 @@ func natRemoveOnCIDRV6(onCIDRList []interface{}, d *schema.ResourceData, m inter
 			if err != nil {
 				return err
 			}
-
 		} else {
 			err := natListCommandV6(cidr.(string), d.Get("snat").(*schema.Set).List(), strSnat, httpDel, d, m, false)
 			if err != nil {
@@ -306,7 +304,6 @@ func natRemoveOnCIDRV6(onCIDRList []interface{}, d *schema.ResourceData, m inter
 			if err != nil {
 				return err
 			}
-
 		} else {
 			err := natListCommandV6(cidr.(string), d.Get("dnat").(*schema.Set).List(), strDnat, httpDel, d, m, false)
 			if err != nil {
@@ -353,7 +350,6 @@ func natAddOnCIDRV6(onCIDRList []interface{}, d *schema.ResourceData, m interfac
 			if err != nil {
 				return err
 			}
-
 		}
 		if d.HasChange("dnat") {
 			oldDnat, newDnat := d.GetChange("dnat")
@@ -376,7 +372,6 @@ func natAddOnCIDRV6(onCIDRList []interface{}, d *schema.ResourceData, m interfac
 			if err != nil {
 				return err
 			}
-
 		} else {
 			err := checkNat(d.Get("dnat").(*schema.Set).List())
 			if err != nil {

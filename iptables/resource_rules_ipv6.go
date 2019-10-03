@@ -277,7 +277,6 @@ func resourceRulesIPv6Update(d *schema.ResourceData, m interface{}) error {
 			d.SetId("")
 			return err
 		}
-
 	} else {
 		err = rulesAddOnCIDRV6(d.Get("on_cidr_blocks").(*schema.Set).List(), d, m)
 		if err != nil {
@@ -318,7 +317,6 @@ func rulesReadOnCIDRV6(onCIDRList []interface{}, d *schema.ResourceData, m inter
 					panic(tfErr)
 				}
 			}
-
 		} else {
 			err := gressListCommandV6(cidr.(string), d.Get("ingress").(*schema.Set).List(), wayIngress, httpGet, d, m, false)
 			if err != nil {
@@ -337,7 +335,6 @@ func rulesReadOnCIDRV6(onCIDRList []interface{}, d *schema.ResourceData, m inter
 					panic(tfErr)
 				}
 			}
-
 		} else {
 			err := gressListCommandV6(cidr.(string), d.Get("egress").(*schema.Set).List(), wayEgress, httpGet, d, m, false)
 			if err != nil {
@@ -405,7 +402,6 @@ func rulesAddOnCIDRV6(onCIDRList []interface{}, d *schema.ResourceData, m interf
 			if err != nil {
 				return err
 			}
-
 		} else {
 			err := gressListCommandV6(cidr.(string), d.Get("ingress").(*schema.Set).List(), wayIngress, httpPut, d, m, false)
 			if err != nil {

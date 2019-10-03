@@ -165,7 +165,6 @@ func resourceRawIPv6Update(d *schema.ResourceData, m interface{}) error {
 			d.SetId("")
 			return err
 		}
-
 	}
 	client := m.(*Client)
 	err := client.saveV6()
