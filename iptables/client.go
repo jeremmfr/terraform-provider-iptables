@@ -53,7 +53,10 @@ type Rule struct {
 }
 
 // NewClient configure
-func NewClient(firewallIP string, firewallPortAPI int, allowedIps []interface{}, https bool, insecure bool, logname string, login string, password string, ipv6 bool) (*Client, error) {
+func NewClient(firewallIP string, firewallPortAPI int, allowedIps []interface{},
+	https bool, insecure bool,
+	logname string, login string, password string,
+	ipv6 bool) (*Client, error) {
 	client := &Client{
 		FirewallIP: firewallIP,
 		Port:       firewallPortAPI,
@@ -302,8 +305,10 @@ func (client *Client) rulesAPI(version string, rule Rule, method string) (bool, 
 	if version == "v6" {
 		uriString = append(uriString, "/rules_v6/")
 	}
-	uriString = append(uriString, rule.Action, "/", rule.Chain, "/", rule.Proto, "/", rule.IfaceIn, "/", rule.IfaceOut, "/", rule.IPSrc, "/", rule.IPDst, "/")
-	if (rule.Sports != "0") || (rule.Dports != "0") || (rule.State != "") || (rule.Icmptype != "") || rule.Fragment || (rule.Position != "?") || (rule.Logprefix != "") {
+	uriString = append(uriString, rule.Action, "/", rule.Chain, "/", rule.Proto, "/", rule.IfaceIn, "/", rule.IfaceOut,
+		"/", rule.IPSrc, "/", rule.IPDst, "/")
+	if (rule.Sports != "0") || (rule.Dports != "0") || (rule.State != "") ||
+		(rule.Icmptype != "") || rule.Fragment || (rule.Position != "?") || (rule.Logprefix != "") {
 		uriString = append(uriString, "?")
 		if rule.Sports != "0" {
 			uriString = append(uriString, "&sports=", rule.Sports)
@@ -371,7 +376,8 @@ func (client *Client) natAPI(version string, rule Rule, method string) (bool, er
 	if version == "v6" {
 		uriString = append(uriString, "/nat_v6/")
 	}
-	uriString = append(uriString, rule.Action, "/", rule.Chain, "/", rule.Proto, "/", rule.Iface, "/", rule.IPSrc, "/", rule.IPDst, "/", rule.IPNat, "/")
+	uriString = append(uriString, rule.Action, "/", rule.Chain, "/", rule.Proto, "/", rule.Iface, "/",
+		rule.IPSrc, "/", rule.IPDst, "/", rule.IPNat, "/")
 
 	if (rule.Dports != "0") || (rule.Position != "?") || (rule.NthEvery != "") || rule.Except {
 		uriString = append(uriString, "?")
@@ -431,8 +437,10 @@ func (client *Client) rawAPI(version string, rule Rule, method string) (bool, er
 	if version == "v6" {
 		uriString = append(uriString, "/raw_v6/")
 	}
-	uriString = append(uriString, rule.Action, "/", rule.Chain, "/", rule.Proto, "/", rule.IfaceIn, "/", rule.IfaceOut, "/", rule.IPSrc, "/", rule.IPDst, "/")
-	if (rule.Sports != "0") || (rule.Dports != "0") || (rule.Tcpflags1 != "") || (rule.Tcpflags2 != "") || rule.Notrack || (rule.Position != "?") || (rule.Logprefix != "") || (rule.Tcpmss != "") {
+	uriString = append(uriString, rule.Action, "/", rule.Chain, "/", rule.Proto, "/", rule.IfaceIn, "/",
+		rule.IfaceOut, "/", rule.IPSrc, "/", rule.IPDst, "/")
+	if (rule.Sports != "0") || (rule.Dports != "0") || (rule.Tcpflags1 != "") || (rule.Tcpflags2 != "") ||
+		rule.Notrack || (rule.Position != "?") || (rule.Logprefix != "") || (rule.Tcpmss != "") {
 		uriString = append(uriString, "?")
 		if rule.Sports != "0" {
 			uriString = append(uriString, "&sports=", rule.Sports)

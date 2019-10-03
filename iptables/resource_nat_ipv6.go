@@ -391,7 +391,8 @@ func natAddOnCIDRV6(onCIDRList []interface{}, d *schema.ResourceData, m interfac
 	return nil
 }
 
-func natListCommandV6(onCIDR string, natList []interface{}, way string, method string, d *schema.ResourceData, m interface{}, cidrExpanded bool) error {
+func natListCommandV6(onCIDR string, natList []interface{}, way string, method string,
+	d *schema.ResourceData, m interface{}, cidrExpanded bool) error {
 	switch method {
 	case httpGet:
 		if cidrExpanded {

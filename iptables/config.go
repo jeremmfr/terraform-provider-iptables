@@ -29,10 +29,12 @@ func (c *Config) Client() (*Client, error) {
 	var client *Client
 	var err error
 	if !c.vaultEnable {
-		client, err = NewClient(c.firewallIP, c.firewallPortAPI, c.allowedIPs, c.https, c.insecure, c.logname, c.login, c.password, c.ipv6Enable)
+		client, err = NewClient(c.firewallIP, c.firewallPortAPI, c.allowedIPs, c.https, c.insecure,
+			c.logname, c.login, c.password, c.ipv6Enable)
 	} else {
 		login, password := getloginVault(c.vaultPath, c.firewallIP, c.vaultKey)
-		client, err = NewClient(c.firewallIP, c.firewallPortAPI, c.allowedIPs, c.https, c.insecure, c.logname, login, password, c.ipv6Enable)
+		client, err = NewClient(c.firewallIP, c.firewallPortAPI, c.allowedIPs, c.https, c.insecure,
+			c.logname, login, password, c.ipv6Enable)
 	}
 	if err != nil {
 		return nil, fmt.Errorf("setting up firewall client %s failed", err)

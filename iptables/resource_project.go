@@ -205,7 +205,9 @@ func resourceProjectUpdate(d *schema.ResourceData, m interface{}) error {
 					if tfErr != nil {
 						panic(tfErr)
 					}
-					return fmt.Errorf("insert position in router_chain failed %s and error for delete router_chain_pos %s (please delete manually) : %s", err, routerChainName, err2)
+					return fmt.Errorf("insert position in router_chain failed %s and "+
+						"error for delete router_chain_pos %s (please delete manually) : %s",
+						err, routerChainName, err2)
 				}
 				tfErr := d.Set("position", 0)
 				if tfErr != nil {
@@ -438,12 +440,14 @@ func insertPosrouter(position int, method string, m interface{}) (bool, error) {
 		} else {
 			routeexistsNoPos, err := client.rulesAPIV4(routeNoPos, httpGet)
 			if err != nil {
-				return routeexistsNoPos, fmt.Errorf("check rules for project position with bad position %d failed : %s", position, err)
+				return routeexistsNoPos, fmt.Errorf("check rules for project position "+
+					"with bad position %d failed : %s", position, err)
 			}
 			if routeexistsNoPos {
 				routeDel, err := client.rulesAPIV4(routeNoPos, httpDel)
 				if !routeDel || err != nil {
-					return routeexistsNoPos, fmt.Errorf("delete rules for project position with bad position %d failed : %s", position, err)
+					return routeexistsNoPos, fmt.Errorf("delete rules for project position "+
+						"with bad position %d failed : %s", position, err)
 				}
 			}
 		}

@@ -1,0 +1,14 @@
+linters:
+  enable-all: true
+  disable:
+    - dupl
+    - funlen
+linters-settings:
+  gocyclo:
+    # minimal code complexity to report, 30 by default
+    min-complexity: 70
+issues:
+  exclude-rules:
+    - text: "TLS InsecureSkipVerify set true"
+      linters:
+        - gosec
