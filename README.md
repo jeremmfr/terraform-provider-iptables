@@ -1,4 +1,5 @@
 # terraform-provider-iptables
+![GitHub tag (latest by date)](https://img.shields.io/github/v/tag/jeremmfr/terraform-provider-iptables)
 [![GoDoc](https://godoc.org/github.com/jeremmfr/terraform-provider-iptables?status.svg)](https://godoc.org/github.com/jeremmfr/terraform-provider-iptables) [![Go Report Card](https://goreportcard.com/badge/github.com/jeremmfr/terraform-provider-iptables)](https://goreportcard.com/report/github.com/jeremmfr/terraform-provider-iptables)
 [![Build Status](https://travis-ci.org/jeremmfr/terraform-provider-iptables.svg?branch=master)](https://travis-ci.org/jeremmfr/terraform-provider-iptables)
 
