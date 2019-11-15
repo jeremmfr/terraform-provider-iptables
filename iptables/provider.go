@@ -7,16 +7,20 @@ import (
 	"github.com/hashicorp/terraform/terraform"
 )
 
-const strAll string = "all"
-const httpGet string = "GET"
-const httpPut string = "PUT"
-const httpDel string = "DELETE"
-const wayIngress string = "in"
-const wayEgress string = "out"
-const ipv4All string = "0.0.0.0/0"
-const ipv6All string = "::/0"
-const ipv4ver string = "ipv4"
-const ipv6ver string = "ipv6"
+const (
+	strAll           = "all"
+	httpGet          = "GET"
+	httpPut          = "PUT"
+	httpDel          = "DELETE"
+	wayIngress       = "in"
+	wayEgress        = "out"
+	ipv4All          = "0.0.0.0/0"
+	ipv6All          = "::/0"
+	ipv4ver          = "ipv4"
+	ipv6ver          = "ipv6"
+	noExistsNoPosErr = noExists + "_but_nopos"
+	noExists         = "no_exists"
+)
 
 // Provider iptables for terraform
 func Provider() terraform.ResourceProvider {

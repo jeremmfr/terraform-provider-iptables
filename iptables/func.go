@@ -11,21 +11,8 @@ import (
 	"github.com/hashicorp/terraform/helper/schema"
 )
 
-func computeAddRemove(from []interface{}, to []interface{}) ([]interface{}, []interface{}) {
-	add := make([]interface{}, 0)
+func computeRemove(from []interface{}, to []interface{}) []interface{} {
 	remove := make([]interface{}, 0)
-	for _, u := range to {
-		found := false
-		for _, v := range from {
-			if u == v {
-				found = true
-				break
-			}
-		}
-		if !found {
-			add = append(add, u)
-		}
-	}
 	for _, u := range from {
 		found := false
 		for _, v := range to {
@@ -38,7 +25,7 @@ func computeAddRemove(from []interface{}, to []interface{}) ([]interface{}, []in
 			remove = append(remove, u)
 		}
 	}
-	return add, remove
+	return remove
 }
 
 // protocolStateFunc ensures we only store a string in any protocol field

@@ -1,9 +1,7 @@
 package iptables
 
 import (
-	"errors"
 	"fmt"
-	"log"
 	"strings"
 	"unicode"
 
@@ -123,17 +121,24 @@ func resourceRawRead(d *schema.ResourceData, m interface{}) error {
 	if d.HasChange("rule") {
 		oraw, _ := d.GetChange("rule")
 		osraw := oraw.(*schema.Set)
-		err := rawRule(osraw.List(), httpGet, m)
+		rawList, err := rawRule(osraw.List(), httpGet, m)
 		if err != nil {
-			d.SetId("")
+			return err
+		}
+		tfErr := d.Set("rule", rawList)
+		if tfErr != nil {
+			panic(tfErr)
 		}
 	} else {
-		log.Print("no change")
-		oraw := d.Get("rule")
-		osraw := oraw.(*schema.Set)
-		err := rawRule(osraw.List(), httpGet, m)
+		raw := d.Get("rule")
+		sraw := raw.(*schema.Set)
+		rawList, err := rawRule(sraw.List(), httpGet, m)
 		if err != nil {
-			d.SetId("")
+			return err
+		}
+		tfErr := d.Set("rule", rawList)
+		if tfErr != nil {
+			panic(tfErr)
 		}
 	}
 	return nil
@@ -155,12 +160,12 @@ func resourceRawUpdate(d *schema.ResourceData, m interface{}) error {
 		newRuleSetDiff := newRuleSet.Difference(oldRuleSet)
 
 		oldRuleSetRemove := computeOutSlicesOfMap(oldRuleSetDiff.List(), newRuleSetDiff.List())
-		err := rawRule(oldRuleSetRemove, httpDel, m)
+		_, err := rawRule(oldRuleSetRemove, httpDel, m)
 		if err != nil {
 			d.SetId("")
 			return err
 		}
-		err = rawRule(newRuleSet.List(), httpPut, m)
+		_, err = rawRule(newRuleSet.List(), httpPut, m)
 		if err != nil {
 			d.SetId("")
 			return err
@@ -177,7 +182,7 @@ func resourceRawUpdate(d *schema.ResourceData, m interface{}) error {
 func resourceRawDelete(d *schema.ResourceData, m interface{}) error {
 	rule := d.Get("rule")
 	ruleSet := rule.(*schema.Set)
-	err := rawRule(ruleSet.List(), httpDel, m)
+	_, err := rawRule(ruleSet.List(), httpDel, m)
 	if err != nil {
 		return err
 	}
@@ -189,9 +194,10 @@ func resourceRawDelete(d *schema.ResourceData, m interface{}) error {
 	return nil
 }
 
-func rawRule(ruleList []interface{}, method string, m interface{}) error {
+func rawRule(ruleList []interface{}, method string, m interface{}) ([]interface{}, error) {
 	client := m.(*Client)
 
+	var ruleListReturn []interface{}
 	for _, rule := range ruleList {
 		ma := rule.(map[string]interface{})
 		var dstOk string
@@ -218,7 +224,7 @@ func rawRule(ruleList []interface{}, method string, m interface{}) error {
 			}
 			words := strings.FieldsFunc(ma["action"].(string), f)
 			if len(words) != 4 {
-				return fmt.Errorf("too many words with log-prefix : one only")
+				return nil, fmt.Errorf("too many words with log-prefix : one only")
 			}
 			actionOk = words[0]
 			logprefixOk = words[3]
@@ -265,56 +271,65 @@ func rawRule(ruleList []interface{}, method string, m interface{}) error {
 		case httpDel:
 			ruleexistsNoPos, err := client.rawAPIV4(ruleNoPos, httpGet)
 			if err != nil {
-				return fmt.Errorf("check rules on raw for %s failed : %s", ma, err)
+				return nil, fmt.Errorf("check rules on raw for %s failed : %s", ma, err)
 			}
 			if ruleexistsNoPos {
 				ret, err := client.rawAPIV4(ruleNoPos, httpDel)
 				if !ret || err != nil {
-					return fmt.Errorf("delete rules on raw %s failed : %s", ma, err)
+					return nil, fmt.Errorf("delete rules on raw %s failed : %s", ma, err)
 				}
 			}
 		case httpPut:
 			ruleexists, err := client.rawAPIV4(rule, httpGet)
 			if err != nil {
-				return fmt.Errorf("check rules on raw for %s failed : %s", ma, err)
+				return nil, fmt.Errorf("check rules on raw for %s failed : %s", ma, err)
 			}
 			if !ruleexists {
 				if ma["position"].(string) != "?" {
 					ruleexistsNoPos, err := client.rawAPIV4(ruleNoPos, httpGet)
 					if err != nil {
-						return fmt.Errorf("check rules on raw for %s failed : %s", ma, err)
+						return nil, fmt.Errorf("check rules on raw for %s failed : %s", ma, err)
 					}
 					if ruleexistsNoPos {
 						ret, err := client.rawAPIV4(ruleNoPos, httpDel)
 						if !ret || err != nil {
-							return fmt.Errorf("delete rules with bad position on raw %s failed : %s", ma, err)
+							return nil, fmt.Errorf("delete rules with bad position on raw %s failed : %s", ma, err)
 						}
 						ret, err = client.rawAPIV4(rule, httpPut)
 						if !ret || err != nil {
-							return fmt.Errorf("add rules on raw %s failed : %s", ma, err)
+							return nil, fmt.Errorf("add rules on raw %s failed : %s", ma, err)
 						}
 					} else {
 						ret, err := client.rawAPIV4(rule, httpPut)
 						if !ret || err != nil {
-							return fmt.Errorf("add rules on raw %s failed %s", ma, err)
+							return nil, fmt.Errorf("add rules on raw %s failed %s", ma, err)
 						}
 					}
 				} else {
 					ret, err := client.rawAPIV4(rule, httpPut)
 					if !ret || err != nil {
-						return fmt.Errorf("add rules on raw %s failed : %s", ma, err)
+						return nil, fmt.Errorf("add rules on raw %s failed : %s", ma, err)
 					}
 				}
 			}
 		case httpGet:
 			ruleexists, err := client.rawAPIV4(rule, httpGet)
 			if err != nil {
-				return fmt.Errorf("check rules on raw for %s failed : %s", ma, err)
+				return ruleListReturn, fmt.Errorf("check rules on raw for %s failed : %s", ma, err)
 			}
-			if !ruleexists {
-				return errors.New("no_exist")
+			if ruleexists {
+				ruleListReturn = append(ruleListReturn, ma)
+			} else {
+				ruleexistsNoPos, err := client.rawAPIV4(ruleNoPos, httpGet)
+				if err != nil {
+					return ruleListReturn, fmt.Errorf("check rules on raw for %v failed : %w", ruleNoPos, err)
+				}
+				if ruleexistsNoPos {
+					ma["position"] = "?"
+					ruleListReturn = append(ruleListReturn, ma)
+				}
 			}
 		}
 	}
-	return nil
+	return ruleListReturn, nil
 }

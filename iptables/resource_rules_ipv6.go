@@ -1,7 +1,6 @@
 package iptables
 
 import (
-	"errors"
 	"fmt"
 	"strings"
 	"unicode"
@@ -233,9 +232,15 @@ func resourceRulesIPv6Read(d *schema.ResourceData, m interface{}) error {
 
 	if d.HasChange("on_cidr_blocks") {
 		oldOnCIDR, _ := d.GetChange("on_cidr_blocks")
-		rulesReadOnCIDRV6(oldOnCIDR.(*schema.Set).List(), d, m)
+		err := rulesReadOnCIDRV6(oldOnCIDR.(*schema.Set).List(), d, m)
+		if err != nil {
+			return err
+		}
 	} else {
-		rulesReadOnCIDRV6(d.Get("on_cidr_blocks").(*schema.Set).List(), d, m)
+		err := rulesReadOnCIDRV6(d.Get("on_cidr_blocks").(*schema.Set).List(), d, m)
+		if err != nil {
+			return err
+		}
 	}
 	if (len(d.Get("ingress").(*schema.Set).List()) == 0) && (len(d.Get("egress").(*schema.Set).List()) == 0) {
 		d.SetId("")
@@ -266,7 +271,7 @@ func resourceRulesIPv6Update(d *schema.ResourceData, m interface{}) error {
 
 	if d.HasChange("on_cidr_blocks") {
 		oldOnCIDR, newOnCIDR := d.GetChange("on_cidr_blocks")
-		_, onCIDRRemove := computeAddRemove(oldOnCIDR.(*schema.Set).List(), newOnCIDR.(*schema.Set).List())
+		onCIDRRemove := computeRemove(oldOnCIDR.(*schema.Set).List(), newOnCIDR.(*schema.Set).List())
 		err = rulesRemoveOnCIDRV6(onCIDRRemove, d, m)
 		if err != nil {
 			d.SetId("")
@@ -306,45 +311,34 @@ func resourceRulesIPv6Delete(d *schema.ResourceData, m interface{}) error {
 	return nil
 }
 
-func rulesReadOnCIDRV6(onCIDRList []interface{}, d *schema.ResourceData, m interface{}) {
+func rulesReadOnCIDRV6(onCIDRList []interface{}, d *schema.ResourceData, m interface{}) error {
 	for _, cidr := range onCIDRList {
 		if d.HasChange("ingress") {
 			oldIngress, _ := d.GetChange("ingress")
 			err := gressListCommandV6(cidr.(string), oldIngress.(*schema.Set).List(), wayIngress, httpGet, d, m, false)
 			if err != nil {
-				tfErr := d.Set("ingress", nil)
-				if tfErr != nil {
-					panic(tfErr)
-				}
+				return err
 			}
 		} else {
 			err := gressListCommandV6(cidr.(string), d.Get("ingress").(*schema.Set).List(), wayIngress, httpGet, d, m, false)
 			if err != nil {
-				tfErr := d.Set("ingress", nil)
-				if tfErr != nil {
-					panic(tfErr)
-				}
+				return err
 			}
 		}
 		if d.HasChange("egress") {
 			oldEgress, _ := d.GetChange("egress")
 			err := gressListCommandV6(cidr.(string), oldEgress.(*schema.Set).List(), wayEgress, httpGet, d, m, false)
 			if err != nil {
-				tfErr := d.Set("egress", nil)
-				if tfErr != nil {
-					panic(tfErr)
-				}
+				return err
 			}
 		} else {
 			err := gressListCommandV6(cidr.(string), d.Get("egress").(*schema.Set).List(), wayEgress, httpGet, d, m, false)
 			if err != nil {
-				tfErr := d.Set("egress", nil)
-				if tfErr != nil {
-					panic(tfErr)
-				}
+				return err
 			}
 		}
 	}
+	return nil
 }
 
 func rulesRemoveOnCIDRV6(onCIDRList []interface{}, d *schema.ResourceData, m interface{}) error {
@@ -447,15 +441,27 @@ func gressListCommandV6(onCIDR string, gressList []interface{}, way string, meth
 		var saves []map[string]interface{}
 		for _, gressElement := range gressList {
 			gressOK := true
+			gressOKnoPos := false
 			gressExpand := expandCIDRInGress(gressElement, ipv6ver)
 			for _, gressExpandElement := range gressExpand {
 				err := gressCmdV6(onCIDR, gressExpandElement, way, httpGet, d, m)
 				if err != nil {
+					if !strings.Contains(err.Error(), noExists) {
+						return err
+					}
 					gressOK = false
+					if err.Error() == noExistsNoPosErr {
+						gressOKnoPos = true
+					}
 				}
 			}
 			if gressOK {
 				saves = append(saves, gressElement.(map[string]interface{}))
+			}
+			if gressOKnoPos {
+				gressElementNew := gressElement.(map[string]interface{})
+				gressElementNew["position"] = "?"
+				saves = append(saves, gressElementNew)
 			}
 		}
 		switch way {
@@ -678,7 +684,14 @@ func gressCmdV6(onCIDR string, gress interface{}, way string, method string,
 			return fmt.Errorf("check rules exists for %s %v failed : %s", onCIDR, rule, err)
 		}
 		if !ruleexists {
-			return errors.New("no_exist")
+			ruleexistsNoPos, err := client.rulesAPIV6(ruleNoPos, httpGet)
+			if err != nil {
+				return fmt.Errorf("check rules exists for %s %v failed : %s", onCIDR, ruleNoPos, err)
+			}
+			if ruleexistsNoPos {
+				return fmt.Errorf(noExistsNoPosErr)
+			}
+			return fmt.Errorf(noExists)
 		}
 	}
 	return nil

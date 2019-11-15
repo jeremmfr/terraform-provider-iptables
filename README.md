@@ -1,8 +1,9 @@
 # terraform-provider-iptables
 ![GitHub release (latest by date)](https://img.shields.io/github/v/release/jeremmfr/terraform-provider-iptables)
+[![Go Status](https://github.com/jeremmfr/terraform-provider-iptables/workflows/Go%20Tests/badge.svg)](https://github.com/jeremmfr/terraform-provider-iptables/actions)
+[![Lint Status](https://github.com/jeremmfr/terraform-provider-iptables/workflows/GolangCI-Lint/badge.svg)](https://github.com/jeremmfr/terraform-provider-iptables/actions)
 [![GoDoc](https://godoc.org/github.com/jeremmfr/terraform-provider-iptables?status.svg)](https://godoc.org/github.com/jeremmfr/terraform-provider-iptables)
 [![Go Report Card](https://goreportcard.com/badge/github.com/jeremmfr/terraform-provider-iptables)](https://goreportcard.com/report/github.com/jeremmfr/terraform-provider-iptables)
-[![Build Status](https://travis-ci.org/jeremmfr/terraform-provider-iptables.svg?branch=master)](https://travis-ci.org/jeremmfr/terraform-provider-iptables)
 
 This provider is compatible with this API : https://github.com/jeremmfr/iptables-api
 

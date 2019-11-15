@@ -150,9 +150,15 @@ func resourceNatIPv6Create(d *schema.ResourceData, m interface{}) error {
 func resourceNatIPv6Read(d *schema.ResourceData, m interface{}) error {
 	if d.HasChange("on_cidr_blocks") {
 		oldOnCIDR, _ := d.GetChange("on_cidr_blocks")
-		natReadOnCIDRV6(oldOnCIDR.(*schema.Set).List(), d, m)
+		err := natReadOnCIDRV6(oldOnCIDR.(*schema.Set).List(), d, m)
+		if err != nil {
+			return err
+		}
 	} else {
-		natReadOnCIDRV6(d.Get("on_cidr_blocks").(*schema.Set).List(), d, m)
+		err := natReadOnCIDRV6(d.Get("on_cidr_blocks").(*schema.Set).List(), d, m)
+		if err != nil {
+			return err
+		}
 	}
 	if (len(d.Get("snat").(*schema.Set).List()) == 0) && (len(d.Get("dnat").(*schema.Set).List()) == 0) {
 		d.SetId("")
@@ -175,7 +181,7 @@ func resourceNatIPv6Update(d *schema.ResourceData, m interface{}) error {
 	}
 	if d.HasChange("on_cidr_blocks") {
 		oldOnCIDR, newOnCIDR := d.GetChange("on_cidr_blocks")
-		_, onCIDRRemove := computeAddRemove(oldOnCIDR.(*schema.Set).List(), newOnCIDR.(*schema.Set).List())
+		onCIDRRemove := computeRemove(oldOnCIDR.(*schema.Set).List(), newOnCIDR.(*schema.Set).List())
 
 		err = natRemoveOnCIDRV6(onCIDRRemove, d, m)
 		if err != nil {
@@ -243,45 +249,34 @@ func natHashV6(v interface{}) int {
 	return hashcode.String(buf.String())
 }
 
-func natReadOnCIDRV6(onCIDRList []interface{}, d *schema.ResourceData, m interface{}) {
+func natReadOnCIDRV6(onCIDRList []interface{}, d *schema.ResourceData, m interface{}) error {
 	for _, cidr := range onCIDRList {
 		if d.HasChange("snat") {
 			oldSnat, _ := d.GetChange("snat")
 			err := natListCommandV6(cidr.(string), oldSnat.(*schema.Set).List(), strSnat, httpGet, d, m, false)
 			if err != nil {
-				tfErr := d.Set("snat", nil)
-				if tfErr != nil {
-					panic(tfErr)
-				}
+				return err
 			}
 		} else {
 			err := natListCommandV6(cidr.(string), d.Get("snat").(*schema.Set).List(), strSnat, httpGet, d, m, false)
 			if err != nil {
-				tfErr := d.Set("snat", nil)
-				if tfErr != nil {
-					panic(tfErr)
-				}
+				return err
 			}
 		}
 		if d.HasChange("dnat") {
 			oldDnat, _ := d.GetChange("dnat")
 			err := natListCommandV6(cidr.(string), oldDnat.(*schema.Set).List(), strDnat, httpGet, d, m, false)
 			if err != nil {
-				tfErr := d.Set("dnat", nil)
-				if tfErr != nil {
-					panic(tfErr)
-				}
+				return err
 			}
 		} else {
 			err := natListCommandV6(cidr.(string), d.Get("dnat").(*schema.Set).List(), strDnat, httpGet, d, m, false)
 			if err != nil {
-				tfErr := d.Set("dnat", nil)
-				if tfErr != nil {
-					panic(tfErr)
-				}
+				return err
 			}
 		}
 	}
+	return nil
 }
 
 func natRemoveOnCIDRV6(onCIDRList []interface{}, d *schema.ResourceData, m interface{}) error {
@@ -396,15 +391,27 @@ func natListCommandV6(onCIDR string, natList []interface{}, way string, method s
 		var saves []map[string]interface{}
 		for _, natElement := range natList {
 			natOK := true
+			natOKnoPos := false
 			natExpanded := expandCIDRInNat(natElement, way, ipv6ver)
 			for _, natExpandedElement := range natExpanded {
 				err := natCmdV6(onCIDR, natExpandedElement, httpGet, m)
 				if err != nil {
+					if !strings.Contains(err.Error(), noExists) {
+						return err
+					}
 					natOK = false
+					if err.Error() == noExistsNoPosErr {
+						natOKnoPos = true
+					}
 				}
 			}
 			if natOK {
 				saves = append(saves, natElement.(map[string]interface{}))
+			}
+			if natOKnoPos {
+				natElementNew := natElement.(map[string]interface{})
+				natElementNew["position"] = "?"
+				saves = append(saves, natElementNew)
 			}
 		}
 		switch way {
@@ -627,7 +634,14 @@ func natCmdV6(onCIDR string, nat interface{}, method string, m interface{}) erro
 			return fmt.Errorf("check rules nat for %s %v failed : %s", onCIDR, natRule, err)
 		}
 		if !natExists {
-			return fmt.Errorf("no_exist")
+			natExistsNoPos, err := client.natAPIV4(natRuleNoPos, httpGet)
+			if err != nil {
+				return fmt.Errorf("check rules nat for %s %v failed : %s", onCIDR, natRuleNoPos, err)
+			}
+			if natExistsNoPos {
+				return fmt.Errorf(noExistsNoPosErr)
+			}
+			return fmt.Errorf(noExists)
 		}
 	}
 	return nil

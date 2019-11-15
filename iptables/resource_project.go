@@ -237,7 +237,7 @@ func resourceProjectUpdate(d *schema.ResourceData, m interface{}) error {
 	}
 	if d.HasChange("cidr_blocks") {
 		oldCIDR, newCIDR := d.GetChange("cidr_blocks")
-		_, cidrListRemove := computeAddRemove(oldCIDR.(*schema.Set).List(), newCIDR.(*schema.Set).List())
+		cidrListRemove := computeRemove(oldCIDR.(*schema.Set).List(), newCIDR.(*schema.Set).List())
 		for _, cidr := range cidrListRemove {
 			_, err := cidrForProject(cidr.(string), nPos.(int), httpDel, d, m)
 			if err != nil {
