@@ -19,7 +19,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           tag_name: ${{ github.ref }}
-          release_name: Release ${RELEASE_VERSION}
+          release_name: Release ${{ env.RELEASE_VERSION }}
           draft: false
           prerelease: false
 
@@ -59,6 +59,6 @@ jobs:
         uses: svenstaro/upload-release-action@v1-release
         with:
           repo_token: ${{ secrets.GITHUB_TOKEN }}
-          file: ./${REPO_NAME}_${RELEASE_VERSION}_${{ matrix.asset_name }}.tar.gz
-          asset_name: ${REPO_NAME}_${RELEASE_VERSION}_${{ matrix.asset_name }}.tar.gz
+          file: ./${{ env.REPO_NAME }}_${{ env.RELEASE_VERSION }}_${{ matrix.asset_name }}.tar.gz
+          asset_name: ${{ env.REPO_NAME }}_${{ env.RELEASE_VERSION }}_${{ matrix.asset_name }}.tar.gz
           tag: ${{ github.ref }}
