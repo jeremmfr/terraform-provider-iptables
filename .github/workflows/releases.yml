@@ -19,7 +19,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           tag_name: ${{ github.ref }}
-          release_name: Release ${{ env.RELEASE_VERSION }}
+          release_name: ${{ env.RELEASE_VERSION }}
           draft: false
           prerelease: false
 
@@ -53,9 +53,9 @@ jobs:
           go get -v -t -d ./...
       - name: Build
         run: go build -o ${REPO_NAME}_${RELEASE_VERSION}
-      - name: Archive
+      - name: Create archive
         run: tar -czvf ${REPO_NAME}_${RELEASE_VERSION}_${{ matrix.asset_name }}.tar.gz ${REPO_NAME}_${RELEASE_VERSION}
-      - name: Upload binaries to release
+      - name: Upload archive to release
         uses: svenstaro/upload-release-action@v1-release
         with:
           repo_token: ${{ secrets.GITHUB_TOKEN }}
