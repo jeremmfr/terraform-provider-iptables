@@ -56,7 +56,7 @@ type Rule struct {
 func NewClient(firewallIP string, firewallPortAPI int, allowedIps []interface{},
 	https bool, insecure bool,
 	logname string, login string, password string,
-	ipv6 bool) (*Client, error) {
+	ipv6 bool, noAddDefaultDrop bool) (*Client, error) {
 	client := &Client{
 		FirewallIP: firewallIP,
 		Port:       firewallPortAPI,
@@ -184,26 +184,28 @@ func NewClient(firewallIP string, firewallPortAPI int, allowedIps []interface{},
 					return nil, fmt.Errorf("create default rules %s failed : %s", table, err)
 				}
 			}
-			ruleDrop := Rule{
-				Action:   "DROP",
-				Chain:    table,
-				Proto:    "all",
-				IfaceIn:  "*",
-				IfaceOut: "*",
-				IPSrc:    "0.0.0.0_0",
-				IPDst:    "0.0.0.0_0",
-				Sports:   "0",
-				Dports:   "0",
-				Position: "?",
-			}
-			ruleexists, err = client.rulesAPIV4(ruleDrop, "GET")
-			if err != nil {
-				return nil, fmt.Errorf("check default rules drop %s failed : %s", table, err)
-			}
-			if !ruleexists {
-				resp, err := client.rulesAPIV4(ruleDrop, "PUT")
-				if !resp || err != nil {
-					return nil, fmt.Errorf("create default rules drop %s failed : %s", table, err)
+			if !noAddDefaultDrop {
+				ruleDrop := Rule{
+					Action:   "DROP",
+					Chain:    table,
+					Proto:    "all",
+					IfaceIn:  "*",
+					IfaceOut: "*",
+					IPSrc:    "0.0.0.0_0",
+					IPDst:    "0.0.0.0_0",
+					Sports:   "0",
+					Dports:   "0",
+					Position: "?",
+				}
+				ruleexists, err = client.rulesAPIV4(ruleDrop, "GET")
+				if err != nil {
+					return nil, fmt.Errorf("check default rules drop %s failed : %s", table, err)
+				}
+				if !ruleexists {
+					resp, err := client.rulesAPIV4(ruleDrop, "PUT")
+					if !resp || err != nil {
+						return nil, fmt.Errorf("create default rules drop %s failed : %s", table, err)
+					}
 				}
 			}
 		}
@@ -241,27 +243,28 @@ func NewClient(firewallIP string, firewallPortAPI int, allowedIps []interface{},
 						return nil, fmt.Errorf("create default rules v6 %s failed : %s", table, err)
 					}
 				}
-
-				ruleDrop := Rule{
-					Action:   "DROP",
-					Chain:    table,
-					Proto:    "all",
-					IfaceIn:  "*",
-					IfaceOut: "*",
-					IPSrc:    "::_0",
-					IPDst:    "::_0",
-					Sports:   "0",
-					Dports:   "0",
-					Position: "?",
-				}
-				ruleexists, err = client.rulesAPIV6(ruleDrop, "GET")
-				if err != nil {
-					return nil, fmt.Errorf("check default rules drop v6 %s failed : %s", table, err)
-				}
-				if !ruleexists {
-					resp, err := client.rulesAPIV6(ruleDrop, "PUT")
-					if !resp || err != nil {
-						return nil, fmt.Errorf("create default rules drop v6 %s failed : %s", table, err)
+				if !noAddDefaultDrop {
+					ruleDrop := Rule{
+						Action:   "DROP",
+						Chain:    table,
+						Proto:    "all",
+						IfaceIn:  "*",
+						IfaceOut: "*",
+						IPSrc:    "::_0",
+						IPDst:    "::_0",
+						Sports:   "0",
+						Dports:   "0",
+						Position: "?",
+					}
+					ruleexists, err = client.rulesAPIV6(ruleDrop, "GET")
+					if err != nil {
+						return nil, fmt.Errorf("check default rules drop v6 %s failed : %s", table, err)
+					}
+					if !ruleexists {
+						resp, err := client.rulesAPIV6(ruleDrop, "PUT")
+						if !resp || err != nil {
+							return nil, fmt.Errorf("create default rules drop v6 %s failed : %s", table, err)
+						}
 					}
 				}
 			}

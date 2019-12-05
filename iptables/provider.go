@@ -79,6 +79,11 @@ func Provider() terraform.ResourceProvider {
 				Optional: true,
 				Default:  false,
 			},
+			"no_add_default_drop": {
+				Type:     schema.TypeBool,
+				Optional: true,
+				Default:  false,
+			},
 		},
 		ResourcesMap: map[string]*schema.Resource{
 			"iptables_project": resourceProject(),
@@ -97,18 +102,19 @@ func Provider() terraform.ResourceProvider {
 
 func configureProvider(d *schema.ResourceData) (interface{}, error) {
 	config := Config{
-		firewallIP:      d.Get("firewall_ip").(string),
-		firewallPortAPI: d.Get("port").(int),
-		allowedIPs:      d.Get("allowed_cidr_blocks").(*schema.Set).List(),
-		https:           d.Get("https").(bool),
-		insecure:        d.Get("insecure").(bool),
-		logname:         os.Getenv("USER"),
-		login:           d.Get("login").(string),
-		password:        d.Get("password").(string),
-		vaultEnable:     d.Get("vault_enable").(bool),
-		vaultPath:       d.Get("vault_path").(string),
-		vaultKey:        d.Get("vault_key").(string),
-		ipv6Enable:      d.Get("ipv6_enable").(bool),
+		firewallIP:       d.Get("firewall_ip").(string),
+		firewallPortAPI:  d.Get("port").(int),
+		allowedIPs:       d.Get("allowed_cidr_blocks").(*schema.Set).List(),
+		https:            d.Get("https").(bool),
+		insecure:         d.Get("insecure").(bool),
+		logname:          os.Getenv("USER"),
+		login:            d.Get("login").(string),
+		password:         d.Get("password").(string),
+		vaultEnable:      d.Get("vault_enable").(bool),
+		vaultPath:        d.Get("vault_path").(string),
+		vaultKey:         d.Get("vault_key").(string),
+		ipv6Enable:       d.Get("ipv6_enable").(bool),
+		noAddDefaultDrop: d.Get("no_add_default_drop").(bool),
 	}
 	return config.Client()
 }

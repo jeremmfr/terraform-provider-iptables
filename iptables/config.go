@@ -10,18 +10,19 @@ import (
 
 // Config provider
 type Config struct {
-	https           bool
-	ipv6Enable      bool
-	insecure        bool
-	vaultEnable     bool
-	firewallPortAPI int
-	firewallIP      string
-	logname         string
-	login           string
-	password        string
-	vaultPath       string
-	vaultKey        string
-	allowedIPs      []interface{}
+	https            bool
+	ipv6Enable       bool
+	insecure         bool
+	vaultEnable      bool
+	noAddDefaultDrop bool
+	firewallPortAPI  int
+	firewallIP       string
+	logname          string
+	login            string
+	password         string
+	vaultPath        string
+	vaultKey         string
+	allowedIPs       []interface{}
 }
 
 // Client configures with Config
@@ -30,11 +31,11 @@ func (c *Config) Client() (*Client, error) {
 	var err error
 	if !c.vaultEnable {
 		client, err = NewClient(c.firewallIP, c.firewallPortAPI, c.allowedIPs, c.https, c.insecure,
-			c.logname, c.login, c.password, c.ipv6Enable)
+			c.logname, c.login, c.password, c.ipv6Enable, c.noAddDefaultDrop)
 	} else {
 		login, password := getloginVault(c.vaultPath, c.firewallIP, c.vaultKey)
 		client, err = NewClient(c.firewallIP, c.firewallPortAPI, c.allowedIPs, c.https, c.insecure,
-			c.logname, login, password, c.ipv6Enable)
+			c.logname, login, password, c.ipv6Enable, c.noAddDefaultDrop)
 	}
 	if err != nil {
 		return nil, fmt.Errorf("setting up firewall client %s failed", err)
