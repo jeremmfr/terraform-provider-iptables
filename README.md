@@ -42,6 +42,7 @@ provider "iptables" {
 * **vault_path** : (Optional) [Def: "lvs"] Path where the key are
 * **vault_key** : (Optional) [Def: ""] Name of key in vault path
 * **ipv6_enable** : (Optional) [Def: false] Add default ipv6 rules (router_chain + DROP)
+* **no_add_default_drop** : (Optional) [Def: false] Don't add drop rules in (INPUT,FORWARD,OUTPUT)
 
 Resource:
 =========
