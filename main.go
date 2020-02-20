@@ -1,7 +1,7 @@
 package main
 
 import (
-	"github.com/jeremmfr/terraform-provider-iptables/iptables"
+	"terraform-provider-iptables/iptables"
 
 	"github.com/hashicorp/terraform/plugin"
 )
