@@ -3,9 +3,13 @@ package iptables
 import (
 	"fmt"
 	"strings"
-	"unicode"
 
 	"github.com/hashicorp/terraform/helper/schema"
+)
+
+const (
+	maxElementsForListPorts = 15
+	numWordForLogPrefix     = 3
 )
 
 func resourceRules() *schema.Resource {
@@ -41,7 +45,7 @@ func resourceRules() *schema.Resource {
 							ValidateFunc: func(v interface{}, k string) (ws []string, errors []error) {
 								value := v.(string)
 								listlen := len(strings.Split(value, ","))
-								if listlen > 15 {
+								if listlen > maxElementsForListPorts {
 									errors = append(errors, fmt.Errorf("%q too many ports specified : %v", k, value))
 								}
 								return
@@ -54,7 +58,7 @@ func resourceRules() *schema.Resource {
 							ValidateFunc: func(v interface{}, k string) (ws []string, errors []error) {
 								value := v.(string)
 								listlen := len(strings.Split(value, ","))
-								if listlen > 15 {
+								if listlen > maxElementsForListPorts {
 									errors = append(errors, fmt.Errorf("%q too many ports specified : %v", k, value))
 								}
 								return
@@ -124,7 +128,7 @@ func resourceRules() *schema.Resource {
 							ValidateFunc: func(v interface{}, k string) (ws []string, errors []error) {
 								value := v.(string)
 								listlen := len(strings.Split(value, ","))
-								if listlen > 15 {
+								if listlen > maxElementsForListPorts {
 									errors = append(errors, fmt.Errorf("%q too many ports specified : %v", k, value))
 								}
 								return
@@ -137,7 +141,7 @@ func resourceRules() *schema.Resource {
 							ValidateFunc: func(v interface{}, k string) (ws []string, errors []error) {
 								value := v.(string)
 								listlen := len(strings.Split(value, ","))
-								if listlen > 15 {
+								if listlen > maxElementsForListPorts {
 									errors = append(errors, fmt.Errorf("%q too many ports specified : %v", k, value))
 								}
 								return
@@ -580,15 +584,12 @@ func gressCmd(onCIDR string, gress interface{}, way string, method string,
 		}
 	}
 	if strings.Contains(ma["action"].(string), "LOG --log-prefix") {
-		f := func(c rune) bool {
-			return !unicode.IsLetter(c) && !unicode.IsNumber(c)
-		}
-		words := strings.FieldsFunc(ma["action"].(string), f)
-		if len(words) != 4 {
+		actionSplit := strings.Split(ma["action"].(string), " ")
+		if len(actionSplit) != numWordForLogPrefix {
 			return fmt.Errorf("too many words with log-prefix : one only")
 		}
-		actionOk = words[0]
-		logprefixOk = words[3]
+		actionOk = actionSplit[0]
+		logprefixOk = actionSplit[2]
 	} else {
 		actionOk = ma["action"].(string)
 		logprefixOk = ""

@@ -11,6 +11,14 @@ import (
 	"github.com/hashicorp/terraform/helper/schema"
 )
 
+const (
+	numberElementsInIPRange = 2
+	protocolIntICMPv6       = 58
+	protocolIntUDP          = 17
+	protocolIntTCP          = 6
+	protocolIntICMP         = 1
+)
+
 func computeRemove(from []interface{}, to []interface{}) []interface{} {
 	remove := make([]interface{}, 0)
 	for _, u := range from {
@@ -84,10 +92,10 @@ func protocolForValue(v string) string {
 // supports "tcp", "udp", "icmp", and "all"
 func sgProtocolIntegers() map[string]int {
 	protocolIntegers := map[string]int{
-		"icmpv6": 58,
-		"udp":    17,
-		"tcp":    6,
-		"icmp":   1,
+		"icmpv6": protocolIntICMPv6,
+		"udp":    protocolIntUDP,
+		"tcp":    protocolIntTCP,
+		"icmp":   protocolIntICMP,
 		"all":    -1,
 	}
 	return protocolIntegers
@@ -194,7 +202,7 @@ func checkCIDRNetworkOrHost(nethost string, vers string) error {
 }
 func checkIPRange(network string) error {
 	ips := strings.Split(network, "-")
-	if len(ips) != 2 {
+	if len(ips) != numberElementsInIPRange {
 		return fmt.Errorf("%v is not a valid IP range", network)
 	}
 	ip1 := net.ParseIP(ips[0])
@@ -210,7 +218,7 @@ func validateCIDRNetworkOrHostV4() schema.SchemaValidateFunc {
 		v := i.(string)
 		if strings.Contains(v, "-") {
 			ips := strings.Split(v, "-")
-			if len(ips) != 2 {
+			if len(ips) != numberElementsInIPRange {
 				es = append(es, fmt.Errorf("%v is not a valid IP range", v))
 			}
 			ip1 := net.ParseIP(ips[0])
@@ -239,7 +247,7 @@ func validateCIDRNetworkOrHostV6() schema.SchemaValidateFunc {
 		v := i.(string)
 		if strings.Contains(v, "-") {
 			ips := strings.Split(v, "-")
-			if len(ips) != 2 {
+			if len(ips) != numberElementsInIPRange {
 				es = append(es, fmt.Errorf("%v is not a valid IP range", v))
 			}
 			ip1 := net.ParseIP(ips[0])

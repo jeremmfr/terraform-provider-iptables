@@ -21,7 +21,7 @@ func resourceProjectIPv6() *schema.Resource {
 				ForceNew: true,
 				ValidateFunc: func(v interface{}, k string) (ws []string, errors []error) {
 					value := v.(string)
-					if len(value) > 30 {
+					if len(value) > maxLengthProjectName {
 						errors = append(errors, fmt.Errorf(
 							"%q cannot be longer than 30 characters", k))
 					}

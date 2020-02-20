@@ -21,6 +21,10 @@ const (
 	noExistsNoPosErr = noExists + "_but_nopos"
 	noExists         = "no_exists"
 )
+const (
+	defaultFirewallPort = 8080
+	one                 = 1
+)
 
 // Provider iptables for terraform
 func Provider() terraform.ResourceProvider {
@@ -33,7 +37,7 @@ func Provider() terraform.ResourceProvider {
 			"port": {
 				Type:     schema.TypeInt,
 				Optional: true,
-				Default:  8080,
+				Default:  defaultFirewallPort,
 			},
 			"allowed_cidr_blocks": {
 				Type:     schema.TypeSet,

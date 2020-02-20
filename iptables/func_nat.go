@@ -164,10 +164,10 @@ func checkNatPositionAndCIDRList(d *schema.ResourceData) error {
 	for _, snat := range d.Get("snat").(*schema.Set).List() {
 		snatMap := snat.(map[string]interface{})
 		if snatMap["position"].(string) != "?" {
-			if lenONCIDR > 1 {
+			if lenONCIDR > one {
 				return fmt.Errorf("position not possible with multiple 'on_cidr_blocks'")
 			}
-			if len(snatMap["filter_cidr_blocks"].(*schema.Set).List()) > 1 {
+			if len(snatMap["filter_cidr_blocks"].(*schema.Set).List()) > one {
 				return fmt.Errorf("position not possible with multiple 'filter_cidr_blocks'")
 			}
 		}
@@ -175,10 +175,10 @@ func checkNatPositionAndCIDRList(d *schema.ResourceData) error {
 	for _, dnat := range d.Get("dnat").(*schema.Set).List() {
 		dnatMap := dnat.(map[string]interface{})
 		if dnatMap["position"].(string) != "?" {
-			if lenONCIDR > 1 {
+			if lenONCIDR > one {
 				return fmt.Errorf("position not possible with multiple 'on_cidr_blocks'")
 			}
-			if len(dnatMap["filter_cidr_blocks"].(*schema.Set).List()) > 1 {
+			if len(dnatMap["filter_cidr_blocks"].(*schema.Set).List()) > one {
 				return fmt.Errorf("position not possible with multiple 'filter_cidr_blocks'")
 			}
 		}

@@ -133,10 +133,10 @@ func checkRulesPositionAndCIDRList(d *schema.ResourceData) error {
 	for _, ingress := range d.Get("ingress").(*schema.Set).List() {
 		ingressMap := ingress.(map[string]interface{})
 		if ingressMap["position"].(string) != "?" {
-			if lenONCIDR > 1 {
+			if lenONCIDR > one {
 				return fmt.Errorf("position not possible with multiple 'on_cidr_blocks'")
 			}
-			if len(ingressMap["cidr_blocks"].(*schema.Set).List()) > 1 {
+			if len(ingressMap["cidr_blocks"].(*schema.Set).List()) > one {
 				return fmt.Errorf("position not possible with multiple 'cidr_blocks'")
 			}
 		}
@@ -144,10 +144,10 @@ func checkRulesPositionAndCIDRList(d *schema.ResourceData) error {
 	for _, egress := range d.Get("egress").(*schema.Set).List() {
 		egressMap := egress.(map[string]interface{})
 		if egressMap["position"].(string) != "?" {
-			if lenONCIDR > 1 {
+			if lenONCIDR > one {
 				return fmt.Errorf("position not possible with multiple 'on_cidr_blocks'")
 			}
-			if len(egressMap["cidr_blocks"].(*schema.Set).List()) > 1 {
+			if len(egressMap["cidr_blocks"].(*schema.Set).List()) > one {
 				return fmt.Errorf("position not possible with multiple 'cidr_blocks'")
 			}
 		}

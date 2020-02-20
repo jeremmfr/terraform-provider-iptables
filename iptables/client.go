@@ -358,13 +358,13 @@ func (client *Client) rulesAPI(version string, rule Rule, method string) (bool, 
 	body, _ := ioutil.ReadAll(resp.Body)
 	log.Printf("[INFO] Response API request %d %s", resp.StatusCode, string(body))
 
-	if resp.StatusCode == 200 {
+	if resp.StatusCode == http.StatusOK {
 		return true, nil
 	}
-	if resp.StatusCode == 404 {
+	if resp.StatusCode == http.StatusNotFound {
 		return false, nil
 	}
-	if resp.StatusCode == 409 {
+	if resp.StatusCode == http.StatusConflict {
 		return false, errors.New("conflict with position")
 	}
 	return false, errors.New(string(body))
@@ -420,13 +420,13 @@ func (client *Client) natAPI(version string, rule Rule, method string) (bool, er
 	body, _ := ioutil.ReadAll(resp.Body)
 	log.Printf("[INFO] Response API request %d %s", resp.StatusCode, string(body))
 
-	if resp.StatusCode == 200 {
+	if resp.StatusCode == http.StatusOK {
 		return true, nil
 	}
-	if resp.StatusCode == 404 {
+	if resp.StatusCode == http.StatusNotFound {
 		return false, nil
 	}
-	if resp.StatusCode == 409 {
+	if resp.StatusCode == http.StatusConflict {
 		return false, errors.New("conflict with position")
 	}
 	return false, errors.New(string(body))
@@ -490,13 +490,13 @@ func (client *Client) rawAPI(version string, rule Rule, method string) (bool, er
 	body, _ := ioutil.ReadAll(resp.Body)
 	log.Printf("[INFO] Response API request %d %s", resp.StatusCode, string(body))
 
-	if resp.StatusCode == 200 {
+	if resp.StatusCode == http.StatusOK {
 		return true, nil
 	}
-	if resp.StatusCode == 404 {
+	if resp.StatusCode == http.StatusNotFound {
 		return false, nil
 	}
-	if resp.StatusCode == 409 {
+	if resp.StatusCode == http.StatusConflict {
 		return false, errors.New("conflict with position")
 	}
 	return false, errors.New(string(body))
@@ -535,13 +535,13 @@ func (client *Client) chainAPI(version string, chain string, method string) (boo
 	body, _ := ioutil.ReadAll(resp.Body)
 	log.Printf("[INFO] Response API request %d %s", resp.StatusCode, string(body))
 
-	if resp.StatusCode == 200 {
+	if resp.StatusCode == http.StatusOK {
 		return true, nil
 	}
-	if resp.StatusCode == 400 {
+	if resp.StatusCode == http.StatusBadRequest {
 		return false, nil
 	}
-	if resp.StatusCode == 401 {
+	if resp.StatusCode == http.StatusUnauthorized {
 		return false, errors.New(strings.Join([]string{client.FirewallIP, ": You are Unauthorized"}, " "))
 	}
 	return false, errors.New(string(body))
@@ -578,7 +578,7 @@ func (client *Client) save(version string) error {
 	defer resp.Body.Close()
 	body, _ := ioutil.ReadAll(resp.Body)
 	log.Printf("[INFO] Response API request %d %s", resp.StatusCode, string(body))
-	if resp.StatusCode != 200 {
+	if resp.StatusCode != http.StatusOK {
 		return errors.New(string(body))
 	}
 	return nil

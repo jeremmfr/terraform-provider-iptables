@@ -3,7 +3,6 @@ package iptables
 import (
 	"fmt"
 	"strings"
-	"unicode"
 
 	"github.com/hashicorp/terraform/helper/schema"
 )
@@ -223,15 +222,12 @@ func rawRuleV6(ruleList []interface{}, method string, m interface{}) ([]interfac
 		}
 
 		if strings.Contains(ma["action"].(string), "LOG --log-prefix") {
-			f := func(c rune) bool {
-				return !unicode.IsLetter(c) && !unicode.IsNumber(c)
-			}
-			words := strings.FieldsFunc(ma["action"].(string), f)
-			if len(words) != 4 {
+			actionSplit := strings.Split(ma["action"].(string), " ")
+			if len(actionSplit) != numWordForLogPrefix {
 				return nil, fmt.Errorf("too many words with log-prefix : one only")
 			}
-			actionOk = words[0]
-			logprefixOk = words[3]
+			actionOk = actionSplit[0]
+			logprefixOk = actionSplit[2]
 		} else {
 			actionOk = ma["action"].(string)
 			logprefixOk = ""

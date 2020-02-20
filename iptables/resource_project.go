@@ -8,6 +8,10 @@ import (
 	"github.com/hashicorp/terraform/helper/schema"
 )
 
+const (
+	maxLengthProjectName = 30
+)
+
 func resourceProject() *schema.Resource {
 	return &schema.Resource{
 		Create: resourceProjectCreate,
@@ -21,7 +25,7 @@ func resourceProject() *schema.Resource {
 				ForceNew: true,
 				ValidateFunc: func(v interface{}, k string) (ws []string, errors []error) {
 					value := v.(string)
-					if len(value) > 30 {
+					if len(value) > maxLengthProjectName {
 						errors = append(errors, fmt.Errorf(
 							"%q cannot be longer than 30 characters", k))
 					}
