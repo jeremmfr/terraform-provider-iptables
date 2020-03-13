@@ -143,7 +143,7 @@ func resourceProjectIPv6Update(d *schema.ResourceData, m interface{}) error {
 	oPos = 0
 	if d.HasChange("position") {
 		positionChange = true
-		oPos, nPos := d.GetChange("position")
+		oPos, nPos = d.GetChange("position")
 		if oPos.(int) != 0 {
 			for _, cidr := range d.Get("cidr_blocks").(*schema.Set).List() {
 				err := checkCIDRBlocksString(cidr.(string), ipv6ver)
