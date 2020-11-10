@@ -21,12 +21,13 @@ const (
 	noExistsNoPosErr = noExists + "_but_nopos"
 	noExists         = "no_exists"
 )
+
 const (
 	defaultFirewallPort = 8080
 	one                 = 1
 )
 
-// Provider iptables for terraform
+// Provider iptables for terraform.
 func Provider() terraform.ResourceProvider {
 	return &schema.Provider{
 		Schema: map[string]*schema.Schema{
@@ -120,5 +121,6 @@ func configureProvider(d *schema.ResourceData) (interface{}, error) {
 		ipv6Enable:       d.Get("ipv6_enable").(bool),
 		noAddDefaultDrop: d.Get("no_add_default_drop").(bool),
 	}
+
 	return config.Client()
 }

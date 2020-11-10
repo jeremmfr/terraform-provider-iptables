@@ -26,6 +26,7 @@ func computeRemove(from []interface{}, to []interface{}) []interface{} {
 		for _, v := range to {
 			if u == v {
 				found = true
+
 				break
 			}
 		}
@@ -33,17 +34,20 @@ func computeRemove(from []interface{}, to []interface{}) []interface{} {
 			remove = append(remove, u)
 		}
 	}
+
 	return remove
 }
 
-// protocolStateFunc ensures we only store a string in any protocol field
+// protocolStateFunc ensures we only store a string in any protocol field.
 func protocolStateFunc(v interface{}) string {
 	switch val := v.(type) {
 	case string:
 		p := protocolForValue(val)
+
 		return p
 	default:
 		log.Printf("[WARN] Non String value given for Protocol: %#v", val)
+
 		return ""
 	}
 }
@@ -68,6 +72,7 @@ func protocolForValue(v string) string {
 		// we were unable to convert to int, suggesting a string name, but it wasn't
 		// found above
 		log.Printf("[WARN] Unable to determine valid protocol: %s", err)
+
 		return protocol
 	}
 
@@ -81,6 +86,7 @@ func protocolForValue(v string) string {
 
 	// fall through
 	log.Printf("[WARN] Unable to determine valid protocol: no matching protocols found")
+
 	return protocol
 }
 
@@ -89,7 +95,7 @@ func protocolForValue(v string) string {
 // documented to be supported by AWS Security Groups
 // http://docs.aws.amazon.com/fr_fr/AWSEC2/latest/APIReference/API_IpPermission.html
 // Similar to protocolIntegers() used by Network ACLs, but explicitly only
-// supports "tcp", "udp", "icmp", and "all"
+// supports "tcp", "udp", "icmp", and "all".
 func sgProtocolIntegers() map[string]int {
 	protocolIntegers := map[string]int{
 		"icmpv6": protocolIntICMPv6,
@@ -98,10 +104,11 @@ func sgProtocolIntegers() map[string]int {
 		"icmp":   protocolIntICMP,
 		"all":    -1,
 	}
+
 	return protocolIntegers
 }
 
-// ifaceStateFunc ensures we only store a string in any iface_* field
+// ifaceStateFunc ensures we only store a string in any iface_* field.
 func ifaceStateFunc(v interface{}) string {
 	switch val := v.(type) {
 	case string:
@@ -109,9 +116,11 @@ func ifaceStateFunc(v interface{}) string {
 		if iface == "-1" || iface == strAll || iface == "*" {
 			return "*"
 		}
+
 		return iface
 	default:
 		log.Printf("[WARN] Non String value given for iface: %#v", val)
+
 		return ""
 	}
 }
@@ -131,6 +140,7 @@ func computeOutSlicesOfMap(from []interface{}, to []interface{}) []interface{} {
 			}
 			if similar {
 				found = true
+
 				break
 			}
 		}
@@ -138,6 +148,7 @@ func computeOutSlicesOfMap(from []interface{}, to []interface{}) []interface{} {
 			remove = append(remove, u)
 		}
 	}
+
 	return remove
 }
 
@@ -158,6 +169,7 @@ func checkCIDRBlocksInMap(cidrSet map[string]interface{}, vers string) error {
 			err = checkCIDRNetworkOrHost(cidrExtract, ipv6ver)
 		}
 	}
+
 	return err
 }
 
@@ -177,8 +189,10 @@ func checkCIDRBlocksString(cidr string, vers string) error {
 			err = checkCIDRNetworkOrHost(cidr, ipv6ver)
 		}
 	}
+
 	return err
 }
+
 func checkCIDRNetworkOrHost(nethost string, vers string) error {
 	network := nethost
 	if !strings.Contains(network, "/") {
@@ -198,8 +212,10 @@ func checkCIDRNetworkOrHost(nethost string, vers string) error {
 	if ipnet == nil || network != ipnet.String() {
 		return fmt.Errorf("%v is not a valid network CIDR or host", nethost)
 	}
+
 	return nil
 }
+
 func checkIPRange(network string) error {
 	ips := strings.Split(network, "-")
 	if len(ips) != numberElementsInIPRange {
@@ -210,6 +226,7 @@ func checkIPRange(network string) error {
 	if ip1 == nil || ip2 == nil || bytes.Compare(ip1, ip2) > 0 {
 		return fmt.Errorf("%v is not a valid IP range", network)
 	}
+
 	return nil
 }
 
@@ -239,9 +256,11 @@ func validateCIDRNetworkOrHostV4() schema.SchemaValidateFunc {
 				es = append(es, fmt.Errorf("%v is not a valid network CIDR or host", v))
 			}
 		}
+
 		return
 	}
 }
+
 func validateCIDRNetworkOrHostV6() schema.SchemaValidateFunc {
 	return func(i interface{}, k string) (s []string, es []error) {
 		v := i.(string)
@@ -268,6 +287,7 @@ func validateCIDRNetworkOrHostV6() schema.SchemaValidateFunc {
 				es = append(es, fmt.Errorf("%v is not a valid network CIDR or host", v))
 			}
 		}
+
 		return
 	}
 }
@@ -276,5 +296,6 @@ func absolute(x int) int {
 	if x < 0 {
 		return -x
 	}
+
 	return x
 }

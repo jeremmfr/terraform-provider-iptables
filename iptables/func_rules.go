@@ -35,6 +35,7 @@ func ruleHash(v interface{}) int {
 			buf.WriteString(fmt.Sprintf("%s-", v))
 		}
 	}
+
 	return hashcode.String(buf.String())
 }
 
@@ -82,6 +83,7 @@ func expandCIDRInGressList(gress []interface{}, version string) []interface{} {
 			}
 		}
 	}
+
 	return newGress
 }
 
@@ -125,6 +127,7 @@ func expandCIDRInGress(gress interface{}, version string) []interface{} {
 			returnGress = append(returnGress, newCIDR)
 		}
 	}
+
 	return returnGress
 }
 
@@ -152,5 +155,6 @@ func checkRulesPositionAndCIDRList(d *schema.ResourceData) error {
 			}
 		}
 	}
+
 	return nil
 }

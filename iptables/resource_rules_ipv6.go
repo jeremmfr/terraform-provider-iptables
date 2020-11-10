@@ -43,6 +43,7 @@ func resourceRulesIPv6() *schema.Resource {
 								if listlen > maxElementsForListPorts {
 									errors = append(errors, fmt.Errorf("%q too many ports specified : %v", k, value))
 								}
+
 								return
 							},
 						},
@@ -56,6 +57,7 @@ func resourceRulesIPv6() *schema.Resource {
 								if listlen > maxElementsForListPorts {
 									errors = append(errors, fmt.Errorf("%q too many ports specified : %v", k, value))
 								}
+
 								return
 							},
 						},
@@ -126,6 +128,7 @@ func resourceRulesIPv6() *schema.Resource {
 								if listlen > maxElementsForListPorts {
 									errors = append(errors, fmt.Errorf("%q too many ports specified : %v", k, value))
 								}
+
 								return
 							},
 						},
@@ -139,6 +142,7 @@ func resourceRulesIPv6() *schema.Resource {
 								if listlen > maxElementsForListPorts {
 									errors = append(errors, fmt.Errorf("%q too many ports specified : %v", k, value))
 								}
+
 								return
 							},
 						},
@@ -214,6 +218,7 @@ func resourceRulesIPv6Create(d *schema.ResourceData, m interface{}) error {
 		return err
 	}
 	d.SetId(d.Get("name").(string) + "!")
+
 	return nil
 }
 
@@ -225,6 +230,7 @@ func resourceRulesIPv6Read(d *schema.ResourceData, m interface{}) error {
 			if tfErr != nil {
 				panic(tfErr)
 			}
+
 			return fmt.Errorf("you can't change project")
 		}
 	}
@@ -244,6 +250,7 @@ func resourceRulesIPv6Read(d *schema.ResourceData, m interface{}) error {
 	if (len(d.Get("ingress").(*schema.Set).List()) == 0) && (len(d.Get("egress").(*schema.Set).List()) == 0) {
 		d.SetId("")
 	}
+
 	return nil
 }
 
@@ -258,12 +265,14 @@ func resourceRulesIPv6Update(d *schema.ResourceData, m interface{}) error {
 	err := checkRulesPositionAndCIDRList(d)
 	if err != nil {
 		d.SetId("")
+
 		return err
 	}
 	if d.HasChange("project") {
 		o, _ := d.GetChange("project")
 		if o != "" {
 			d.SetId("")
+
 			return fmt.Errorf("you can't change project")
 		}
 	}
@@ -274,17 +283,20 @@ func resourceRulesIPv6Update(d *schema.ResourceData, m interface{}) error {
 		err = rulesRemoveOnCIDRV6(onCIDRRemove, d, m)
 		if err != nil {
 			d.SetId("")
+
 			return err
 		}
 		err = rulesAddOnCIDRV6(d.Get("on_cidr_blocks").(*schema.Set).List(), d, m)
 		if err != nil {
 			d.SetId("")
+
 			return err
 		}
 	} else {
 		err = rulesAddOnCIDRV6(d.Get("on_cidr_blocks").(*schema.Set).List(), d, m)
 		if err != nil {
 			d.SetId("")
+
 			return err
 		}
 	}
@@ -293,6 +305,7 @@ func resourceRulesIPv6Update(d *schema.ResourceData, m interface{}) error {
 	if err != nil {
 		return fmt.Errorf("ip6tables save failed : %s", err)
 	}
+
 	return nil
 }
 
@@ -300,6 +313,7 @@ func resourceRulesIPv6Delete(d *schema.ResourceData, m interface{}) error {
 	err := rulesRemoveOnCIDRV6(d.Get("on_cidr_blocks").(*schema.Set).List(), d, m)
 	if err != nil {
 		d.SetId(d.Get("name").(string) + "!")
+
 		return err
 	}
 	client := m.(*Client)
@@ -307,6 +321,7 @@ func resourceRulesIPv6Delete(d *schema.ResourceData, m interface{}) error {
 	if err != nil {
 		return fmt.Errorf("ip6tables save failed : %s", err)
 	}
+
 	return nil
 }
 
@@ -337,6 +352,7 @@ func rulesReadOnCIDRV6(onCIDRList []interface{}, d *schema.ResourceData, m inter
 			}
 		}
 	}
+
 	return nil
 }
 
@@ -367,6 +383,7 @@ func rulesRemoveOnCIDRV6(onCIDRList []interface{}, d *schema.ResourceData, m int
 			}
 		}
 	}
+
 	return nil
 }
 
@@ -427,6 +444,7 @@ func rulesAddOnCIDRV6(onCIDRList []interface{}, d *schema.ResourceData, m interf
 			}
 		}
 	}
+
 	return nil
 }
 
@@ -475,6 +493,7 @@ func gressListCommandV6(onCIDR string, gressList []interface{}, way string, meth
 				panic(tfErr)
 			}
 		}
+
 		return nil
 	case httpDel:
 		if cidrExpanded {
@@ -495,6 +514,7 @@ func gressListCommandV6(onCIDR string, gressList []interface{}, way string, meth
 				}
 			}
 		}
+
 		return nil
 	case httpPut:
 		if cidrExpanded {
@@ -523,8 +543,10 @@ func gressListCommandV6(onCIDR string, gressList []interface{}, way string, meth
 				}
 			}
 		}
+
 		return nil
 	}
+
 	return fmt.Errorf("internal error : unknown method for gressListCommand")
 }
 
@@ -605,8 +627,8 @@ func gressCmdV6(onCIDR string, gress interface{}, way string, method string,
 		Proto:     ma["protocol"].(string),
 		IfaceIn:   ma["iface_in"].(string),
 		IfaceOut:  ma["iface_out"].(string),
-		IPSrc:     strings.Replace(srcOk, "/", "_", -1),
-		IPDst:     strings.Replace(dstOk, "/", "_", -1),
+		IPSrc:     strings.ReplaceAll(srcOk, "/", "_"),
+		IPDst:     strings.ReplaceAll(dstOk, "/", "_"),
 		Sports:    ma["from_port"].(string),
 		Dports:    ma["to_port"].(string),
 		Position:  ma["position"].(string),
@@ -621,8 +643,8 @@ func gressCmdV6(onCIDR string, gress interface{}, way string, method string,
 		Proto:     ma["protocol"].(string),
 		IfaceIn:   ma["iface_in"].(string),
 		IfaceOut:  ma["iface_out"].(string),
-		IPSrc:     strings.Replace(srcOk, "/", "_", -1),
-		IPDst:     strings.Replace(dstOk, "/", "_", -1),
+		IPSrc:     strings.ReplaceAll(srcOk, "/", "_"),
+		IPDst:     strings.ReplaceAll(dstOk, "/", "_"),
 		Sports:    ma["from_port"].(string),
 		Dports:    ma["to_port"].(string),
 		Position:  "?",
@@ -687,8 +709,10 @@ func gressCmdV6(onCIDR string, gress interface{}, way string, method string,
 			if ruleexistsNoPos {
 				return fmt.Errorf(noExistsNoPosErr)
 			}
+
 			return fmt.Errorf(noExists)
 		}
 	}
+
 	return nil
 }

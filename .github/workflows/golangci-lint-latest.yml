@@ -1,5 +1,8 @@
-name: GolangCI-Lint
-on: [push, pull_request]
+name: GolangCI-Lint-Latest
+on:
+  push:
+    branches:
+      - master
 jobs:
   run:
     name: Run
@@ -10,5 +13,5 @@ jobs:
       - name: golangci-lint
         uses: golangci/golangci-lint-action@v2
         with:
-          version: v1.32
+          version: latest
           args: -c .golangci.yml -v

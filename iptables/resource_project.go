@@ -29,6 +29,7 @@ func resourceProject() *schema.Resource {
 						errors = append(errors, fmt.Errorf(
 							"%q cannot be longer than 30 characters", k))
 					}
+
 					return
 				},
 			},
@@ -47,6 +48,7 @@ func resourceProject() *schema.Resource {
 						errors = append(errors, fmt.Errorf(
 							"%q cannot be lower than 0: %d", k, value))
 					}
+
 					return
 				},
 			},
@@ -70,6 +72,7 @@ func resourceProjectCreate(d *schema.ResourceData, m interface{}) error {
 		return fmt.Errorf("project %s already exist", d.Get("name"))
 	}
 	d.SetId(d.Get("name").(string) + "!")
+
 	return resourceProjectUpdate(d, m)
 }
 
@@ -82,6 +85,7 @@ func resourceProjectRead(d *schema.ResourceData, m interface{}) error {
 	}
 	if !checkExists {
 		d.SetId("")
+
 		return nil
 	}
 	if d.Get("position").(int) != 0 {
@@ -124,6 +128,7 @@ func resourceProjectRead(d *schema.ResourceData, m interface{}) error {
 		panic(tfErr)
 	}
 	d.SetId(d.Get("name").(string) + "!")
+
 	return nil
 }
 
@@ -143,6 +148,7 @@ func resourceProjectUpdate(d *schema.ResourceData, m interface{}) error {
 					if tfErr != nil {
 						panic(tfErr)
 					}
+
 					return err
 				}
 				_, err = cidrForProject(cidr.(string), 0, httpPut, d, m)
@@ -151,6 +157,7 @@ func resourceProjectUpdate(d *schema.ResourceData, m interface{}) error {
 					if tfErr != nil {
 						panic(tfErr)
 					}
+
 					return err
 				}
 			}
@@ -160,6 +167,7 @@ func resourceProjectUpdate(d *schema.ResourceData, m interface{}) error {
 				if tfErr != nil {
 					panic(tfErr)
 				}
+
 				return fmt.Errorf("delete rule for position %d failed : %s", oPos.(int), err)
 			}
 			routerChainName := strings.Join([]string{"router_chain_pos", strconv.Itoa(absolute(oPos.(int)))}, "")
@@ -169,6 +177,7 @@ func resourceProjectUpdate(d *schema.ResourceData, m interface{}) error {
 				if tfErr != nil {
 					panic(tfErr)
 				}
+
 				return fmt.Errorf("delete chain %s failed : %s", routerChainName, err)
 			}
 			tfErr := d.Set("position", 0)
@@ -184,6 +193,7 @@ func resourceProjectUpdate(d *schema.ResourceData, m interface{}) error {
 				if tfErr != nil {
 					panic(tfErr)
 				}
+
 				return fmt.Errorf("check if chain %s exist failed : %s", routerChainName, err)
 			}
 			if checkExists {
@@ -191,6 +201,7 @@ func resourceProjectUpdate(d *schema.ResourceData, m interface{}) error {
 				if tfErr != nil {
 					panic(tfErr)
 				}
+
 				return fmt.Errorf("position %d already used", nPos.(int))
 			}
 			create, err := client.chainAPIV4(routerChainName, httpPut)
@@ -199,6 +210,7 @@ func resourceProjectUpdate(d *schema.ResourceData, m interface{}) error {
 				if tfErr != nil {
 					panic(tfErr)
 				}
+
 				return fmt.Errorf("create chain %s for position : %s", routerChainName, err)
 			}
 			createPos, err := insertPosrouter(nPos.(int), httpPut, m)
@@ -209,6 +221,7 @@ func resourceProjectUpdate(d *schema.ResourceData, m interface{}) error {
 					if tfErr != nil {
 						panic(tfErr)
 					}
+
 					return fmt.Errorf("insert position in router_chain failed %s and "+
 						"error for delete router_chain_pos %s (please delete manually) : %s",
 						err, routerChainName, err2)
@@ -217,6 +230,7 @@ func resourceProjectUpdate(d *schema.ResourceData, m interface{}) error {
 				if tfErr != nil {
 					panic(tfErr)
 				}
+
 				return fmt.Errorf("insert position in router_chain failed : %s", err)
 			}
 			if !d.HasChange("cidr_blocks") {
@@ -286,6 +300,7 @@ func resourceProjectUpdate(d *schema.ResourceData, m interface{}) error {
 	if tfErr != nil {
 		panic(tfErr)
 	}
+
 	return nil
 }
 
@@ -319,6 +334,7 @@ func resourceProjectDelete(d *schema.ResourceData, m interface{}) error {
 	if err != nil {
 		return fmt.Errorf("iptables save failed : %s", err)
 	}
+
 	return nil
 }
 
@@ -335,7 +351,7 @@ func cidrForProject(cidr string, position int, method string, d *schema.Resource
 		Proto:    "all",
 		IfaceIn:  "*",
 		IfaceOut: "*",
-		IPSrc:    strings.Replace(cidr, "/", "_", -1),
+		IPSrc:    strings.ReplaceAll(cidr, "/", "_"),
 		IPDst:    "0.0.0.0_0",
 		Sports:   "0",
 		Dports:   "0",
@@ -371,7 +387,7 @@ func cidrForProject(cidr string, position int, method string, d *schema.Resource
 		IfaceIn:  "*",
 		IfaceOut: "*",
 		IPSrc:    "0.0.0.0_0",
-		IPDst:    strings.Replace(cidr, "/", "_", -1),
+		IPDst:    strings.ReplaceAll(cidr, "/", "_"),
 		Sports:   "0",
 		Dports:   "0",
 	}
@@ -395,6 +411,7 @@ func cidrForProject(cidr string, position int, method string, d *schema.Resource
 	if !routeexists && method == httpGet {
 		return routeexists, nil
 	}
+
 	return true, nil
 }
 
@@ -458,5 +475,6 @@ func insertPosrouter(position int, method string, m interface{}) (bool, error) {
 	if !routeexists && method == httpGet {
 		return routeexists, nil
 	}
+
 	return true, nil
 }

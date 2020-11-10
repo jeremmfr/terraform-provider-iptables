@@ -144,6 +144,7 @@ func resourceNatIPv6Create(d *schema.ResourceData, m interface{}) error {
 		return err
 	}
 	d.SetId(d.Get("name").(string) + "!")
+
 	return nil
 }
 
@@ -163,6 +164,7 @@ func resourceNatIPv6Read(d *schema.ResourceData, m interface{}) error {
 	if (len(d.Get("snat").(*schema.Set).List()) == 0) && (len(d.Get("dnat").(*schema.Set).List()) == 0) {
 		d.SetId("")
 	}
+
 	return nil
 }
 
@@ -177,6 +179,7 @@ func resourceNatIPv6Update(d *schema.ResourceData, m interface{}) error {
 	err := checkNatPositionAndCIDRList(d)
 	if err != nil {
 		d.SetId("")
+
 		return err
 	}
 	if d.HasChange("on_cidr_blocks") {
@@ -186,17 +189,20 @@ func resourceNatIPv6Update(d *schema.ResourceData, m interface{}) error {
 		err = natRemoveOnCIDRV6(onCIDRRemove, d, m)
 		if err != nil {
 			d.SetId("")
+
 			return err
 		}
 		err = natAddOnCIDRV6(d.Get("on_cidr_blocks").(*schema.Set).List(), d, m)
 		if err != nil {
 			d.SetId("")
+
 			return err
 		}
 	} else {
 		err = natAddOnCIDRV6(d.Get("on_cidr_blocks").(*schema.Set).List(), d, m)
 		if err != nil {
 			d.SetId("")
+
 			return err
 		}
 	}
@@ -213,6 +219,7 @@ func resourceNatIPv6Delete(d *schema.ResourceData, m interface{}) error {
 	err := natRemoveOnCIDRV6(d.Get("on_cidr_blocks").(*schema.Set).List(), d, m)
 	if err != nil {
 		d.SetId(d.Get("name").(string) + "!")
+
 		return err
 	}
 	client := m.(*Client)
@@ -220,6 +227,7 @@ func resourceNatIPv6Delete(d *schema.ResourceData, m interface{}) error {
 	if err != nil {
 		return fmt.Errorf("ip6tables save failed : %s", err)
 	}
+
 	return nil
 }
 
@@ -229,7 +237,7 @@ func natHashV6(v interface{}) int {
 	buf.WriteString(fmt.Sprintf("%s-", m["to_port"].(string)))
 	p := protocolForValue(m["protocol"].(string))
 	buf.WriteString(fmt.Sprintf("%s-", p))
-	buf.WriteString(fmt.Sprintf("%s-", strings.Replace(m["nat_ip"].(string), "/128", "", -1)))
+	buf.WriteString(fmt.Sprintf("%s-", strings.ReplaceAll(m["nat_ip"].(string), "/128", "")))
 	buf.WriteString(fmt.Sprintf("%s-", m["iface"].(string)))
 	buf.WriteString(fmt.Sprintf("%s-", m["position"].(string)))
 	buf.WriteString(fmt.Sprintf("%s-", m["nth_every"].(string)))
@@ -246,6 +254,7 @@ func natHashV6(v interface{}) int {
 			buf.WriteString(fmt.Sprintf("%s-", v))
 		}
 	}
+
 	return hashcode.String(buf.String())
 }
 
@@ -276,6 +285,7 @@ func natReadOnCIDRV6(onCIDRList []interface{}, d *schema.ResourceData, m interfa
 			}
 		}
 	}
+
 	return nil
 }
 
@@ -306,6 +316,7 @@ func natRemoveOnCIDRV6(onCIDRList []interface{}, d *schema.ResourceData, m inter
 			}
 		}
 	}
+
 	return nil
 }
 
@@ -378,6 +389,7 @@ func natAddOnCIDRV6(onCIDRList []interface{}, d *schema.ResourceData, m interfac
 			}
 		}
 	}
+
 	return nil
 }
 
@@ -426,6 +438,7 @@ func natListCommandV6(onCIDR string, natList []interface{}, way string, method s
 				panic(tfErr)
 			}
 		}
+
 		return nil
 	case httpDel:
 		if cidrExpanded {
@@ -446,6 +459,7 @@ func natListCommandV6(onCIDR string, natList []interface{}, way string, method s
 				}
 			}
 		}
+
 		return nil
 	case httpPut:
 		if cidrExpanded {
@@ -474,8 +488,10 @@ func natListCommandV6(onCIDR string, natList []interface{}, way string, method s
 				}
 			}
 		}
+
 		return nil
 	}
+
 	return fmt.Errorf("internal error : unknown method for natListCommand")
 }
 
@@ -517,10 +533,10 @@ func natCmdV6(onCIDR string, nat interface{}, method string, m interface{}) erro
 			Chain:     "POSTROUTING",
 			Proto:     ma["protocol"].(string),
 			Iface:     ma["iface"].(string),
-			IPSrc:     strings.Replace(srcOk, "/", "_", -1),
-			IPDst:     strings.Replace(dstOk, "/", "_", -1),
+			IPSrc:     strings.ReplaceAll(srcOk, "/", "_"),
+			IPDst:     strings.ReplaceAll(dstOk, "/", "_"),
 			Dports:    ma["to_port"].(string),
-			IPNat:     strings.Replace(ma["nat_ip"].(string), "/128", "", -1),
+			IPNat:     strings.ReplaceAll(ma["nat_ip"].(string), "/128", ""),
 			NthEvery:  ma["nth_every"].(string),
 			NthPacket: ma["nth_packet"].(string),
 			Position:  ma["position"].(string),
@@ -531,10 +547,10 @@ func natCmdV6(onCIDR string, nat interface{}, method string, m interface{}) erro
 			Chain:     "POSTROUTING",
 			Proto:     ma["protocol"].(string),
 			Iface:     ma["iface"].(string),
-			IPSrc:     strings.Replace(srcOk, "/", "_", -1),
-			IPDst:     strings.Replace(dstOk, "/", "_", -1),
+			IPSrc:     strings.ReplaceAll(srcOk, "/", "_"),
+			IPDst:     strings.ReplaceAll(dstOk, "/", "_"),
 			Dports:    ma["to_port"].(string),
-			IPNat:     strings.Replace(ma["nat_ip"].(string), "/128", "", -1),
+			IPNat:     strings.ReplaceAll(ma["nat_ip"].(string), "/128", ""),
 			NthEvery:  ma["nth_every"].(string),
 			NthPacket: ma["nth_packet"].(string),
 			Position:  "?",
@@ -558,10 +574,10 @@ func natCmdV6(onCIDR string, nat interface{}, method string, m interface{}) erro
 			Chain:     "PREROUTING",
 			Proto:     ma["protocol"].(string),
 			Iface:     ma["iface"].(string),
-			IPSrc:     strings.Replace(srcOk, "/", "_", -1),
-			IPDst:     strings.Replace(dstOk, "/", "_", -1),
+			IPSrc:     strings.ReplaceAll(srcOk, "/", "_"),
+			IPDst:     strings.ReplaceAll(dstOk, "/", "_"),
 			Dports:    ma["to_port"].(string),
-			IPNat:     strings.Replace(ma["nat_ip"].(string), "/128", "", -1),
+			IPNat:     strings.ReplaceAll(ma["nat_ip"].(string), "/128", ""),
 			NthEvery:  ma["nth_every"].(string),
 			NthPacket: ma["nth_packet"].(string),
 			Position:  ma["position"].(string),
@@ -572,10 +588,10 @@ func natCmdV6(onCIDR string, nat interface{}, method string, m interface{}) erro
 			Chain:     "PREROUTING",
 			Proto:     ma["protocol"].(string),
 			Iface:     ma["iface"].(string),
-			IPSrc:     strings.Replace(srcOk, "/", "_", -1),
-			IPDst:     strings.Replace(dstOk, "/", "_", -1),
+			IPSrc:     strings.ReplaceAll(srcOk, "/", "_"),
+			IPDst:     strings.ReplaceAll(dstOk, "/", "_"),
 			Dports:    ma["to_port"].(string),
-			IPNat:     strings.Replace(ma["nat_ip"].(string), "/128", "", -1),
+			IPNat:     strings.ReplaceAll(ma["nat_ip"].(string), "/128", ""),
 			NthEvery:  ma["nth_every"].(string),
 			NthPacket: ma["nth_packet"].(string),
 			Position:  "?",
@@ -641,8 +657,10 @@ func natCmdV6(onCIDR string, nat interface{}, method string, m interface{}) erro
 			if natExistsNoPos {
 				return fmt.Errorf(noExistsNoPosErr)
 			}
+
 			return fmt.Errorf(noExists)
 		}
 	}
+
 	return nil
 }

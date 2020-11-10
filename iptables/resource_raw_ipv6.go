@@ -113,6 +113,7 @@ func resourceRawIPv6Create(d *schema.ResourceData, m interface{}) error {
 		return err
 	}
 	d.SetId(d.Get("name").(string) + "!")
+
 	return nil
 }
 
@@ -121,7 +122,6 @@ func resourceRawIPv6Read(d *schema.ResourceData, m interface{}) error {
 		oraw, _ := d.GetChange("rule")
 		osraw := oraw.(*schema.Set)
 		rawList, err := rawRuleV6(osraw.List(), httpGet, m)
-
 		if err != nil {
 			return err
 		}
@@ -141,6 +141,7 @@ func resourceRawIPv6Read(d *schema.ResourceData, m interface{}) error {
 			panic(tfErr)
 		}
 	}
+
 	return nil
 }
 
@@ -163,11 +164,13 @@ func resourceRawIPv6Update(d *schema.ResourceData, m interface{}) error {
 		_, err := rawRuleV6(oldRuleSetRemove, httpDel, m)
 		if err != nil {
 			d.SetId("")
+
 			return err
 		}
 		_, err = rawRuleV6(newRuleSet.List(), httpPut, m)
 		if err != nil {
 			d.SetId("")
+
 			return err
 		}
 	}
@@ -176,6 +179,7 @@ func resourceRawIPv6Update(d *schema.ResourceData, m interface{}) error {
 	if err != nil {
 		return fmt.Errorf("ip6tables save failed : %s", err)
 	}
+
 	return nil
 }
 
@@ -191,6 +195,7 @@ func resourceRawIPv6Delete(d *schema.ResourceData, m interface{}) error {
 	if err != nil {
 		return fmt.Errorf("ip6tables save failed : %s", err)
 	}
+
 	return nil
 }
 
@@ -239,8 +244,8 @@ func rawRuleV6(ruleList []interface{}, method string, m interface{}) ([]interfac
 			Proto:     ma["protocol"].(string),
 			IfaceIn:   ma["iface_in"].(string),
 			IfaceOut:  ma["iface_out"].(string),
-			IPSrc:     strings.Replace(srcOk, "/", "_", -1),
-			IPDst:     strings.Replace(dstOk, "/", "_", -1),
+			IPSrc:     strings.ReplaceAll(srcOk, "/", "_"),
+			IPDst:     strings.ReplaceAll(dstOk, "/", "_"),
 			Sports:    ma["from_port"].(string),
 			Dports:    ma["to_port"].(string),
 			Tcpflags1: ma["tcpflags_mask"].(string),
@@ -256,8 +261,8 @@ func rawRuleV6(ruleList []interface{}, method string, m interface{}) ([]interfac
 			Proto:     ma["protocol"].(string),
 			IfaceIn:   ma["iface_in"].(string),
 			IfaceOut:  ma["iface_out"].(string),
-			IPSrc:     strings.Replace(srcOk, "/", "_", -1),
-			IPDst:     strings.Replace(dstOk, "/", "_", -1),
+			IPSrc:     strings.ReplaceAll(srcOk, "/", "_"),
+			IPDst:     strings.ReplaceAll(dstOk, "/", "_"),
 			Sports:    ma["from_port"].(string),
 			Dports:    ma["to_port"].(string),
 			Tcpflags1: ma["tcpflags_mask"].(string),
@@ -332,5 +337,6 @@ func rawRuleV6(ruleList []interface{}, method string, m interface{}) ([]interfac
 			}
 		}
 	}
+
 	return ruleListReturn, nil
 }

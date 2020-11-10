@@ -4,6 +4,11 @@ linters:
     - dupl
     - funlen
     - wsl
+    - nestif
+    - errorlint
+    - goerr113
+    - exhaustivestruct
+    - wrapcheck
 linters-settings:
   gocyclo:
     # minimal code complexity to report, 30 by default

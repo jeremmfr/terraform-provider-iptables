@@ -8,7 +8,7 @@ import (
 	vaultapi "github.com/hashicorp/vault/api"
 )
 
-// Config provider
+// Config provider.
 type Config struct {
 	https            bool
 	ipv6Enable       bool
@@ -25,7 +25,7 @@ type Config struct {
 	allowedIPs       []interface{}
 }
 
-// Client configures with Config
+// Client configures with Config.
 func (c *Config) Client() (*Client, error) {
 	var client *Client
 	var err error
@@ -42,6 +42,7 @@ func (c *Config) Client() (*Client, error) {
 	}
 
 	log.Printf("[INFO] Firewall client configured for server %s", c.firewallIP)
+
 	return client, nil
 }
 
@@ -85,5 +86,6 @@ func getloginVault(path string, firewallIP string, key string) (string, string) 
 			}
 		}
 	}
+
 	return login, password
 }

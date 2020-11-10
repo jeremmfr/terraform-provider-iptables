@@ -25,9 +25,9 @@ func expandCIDRInNatList(nat []interface{}, way string, version string) []interf
 			newCIDR["action"] = way
 			switch version {
 			case ipv4ver:
-				newCIDR["nat_ip"] = strings.Replace(ma["nat_ip"].(string), "/32", "", -1)
+				newCIDR["nat_ip"] = strings.ReplaceAll(ma["nat_ip"].(string), "/32", "")
 			case ipv6ver:
-				newCIDR["nat_ip"] = strings.Replace(ma["nat_ip"].(string), "/128", "", -1)
+				newCIDR["nat_ip"] = strings.ReplaceAll(ma["nat_ip"].(string), "/128", "")
 			}
 
 			newNat = append(newNat, newCIDR)
@@ -47,10 +47,10 @@ func expandCIDRInNatList(nat []interface{}, way string, version string) []interf
 				switch version {
 				case ipv4ver:
 					newCIDR["cidr_blocks"] = ipv4All
-					newCIDR["nat_ip"] = strings.Replace(ma["nat_ip"].(string), "/32", "", -1)
+					newCIDR["nat_ip"] = strings.ReplaceAll(ma["nat_ip"].(string), "/32", "")
 				case ipv6ver:
 					newCIDR["cidr_blocks"] = ipv6All
-					newCIDR["nat_ip"] = strings.Replace(ma["nat_ip"].(string), "/128", "", -1)
+					newCIDR["nat_ip"] = strings.ReplaceAll(ma["nat_ip"].(string), "/128", "")
 				}
 
 				newNat = append(newNat, newCIDR)
@@ -68,15 +68,16 @@ func expandCIDRInNatList(nat []interface{}, way string, version string) []interf
 					newCIDR["action"] = way
 					switch version {
 					case ipv4ver:
-						newCIDR["nat_ip"] = strings.Replace(ma["nat_ip"].(string), "/32", "", -1)
+						newCIDR["nat_ip"] = strings.ReplaceAll(ma["nat_ip"].(string), "/32", "")
 					case ipv6ver:
-						newCIDR["nat_ip"] = strings.Replace(ma["nat_ip"].(string), "/128", "", -1)
+						newCIDR["nat_ip"] = strings.ReplaceAll(ma["nat_ip"].(string), "/128", "")
 					}
 					newNat = append(newNat, newCIDR)
 				}
 			}
 		}
 	}
+
 	return newNat
 }
 
@@ -96,9 +97,9 @@ func expandCIDRInNat(nat interface{}, way string, version string) []interface{} 
 		newCIDR["action"] = way
 		switch version {
 		case ipv4ver:
-			newCIDR["nat_ip"] = strings.Replace(ma["nat_ip"].(string), "/32", "", -1)
+			newCIDR["nat_ip"] = strings.ReplaceAll(ma["nat_ip"].(string), "/32", "")
 		case ipv6ver:
-			newCIDR["nat_ip"] = strings.Replace(ma["nat_ip"].(string), "/128", "", -1)
+			newCIDR["nat_ip"] = strings.ReplaceAll(ma["nat_ip"].(string), "/128", "")
 		}
 		returnNat = append(returnNat, newCIDR)
 	} else {
@@ -117,10 +118,10 @@ func expandCIDRInNat(nat interface{}, way string, version string) []interface{} 
 			switch version {
 			case ipv4ver:
 				newCIDR["cidr_blocks"] = ipv4All
-				newCIDR["nat_ip"] = strings.Replace(ma["nat_ip"].(string), "/32", "", -1)
+				newCIDR["nat_ip"] = strings.ReplaceAll(ma["nat_ip"].(string), "/32", "")
 			case ipv6ver:
 				newCIDR["cidr_blocks"] = ipv6All
-				newCIDR["nat_ip"] = strings.Replace(ma["nat_ip"].(string), "/128", "", -1)
+				newCIDR["nat_ip"] = strings.ReplaceAll(ma["nat_ip"].(string), "/128", "")
 			}
 			returnNat = append(returnNat, newCIDR)
 		} else {
@@ -129,7 +130,7 @@ func expandCIDRInNat(nat interface{}, way string, version string) []interface{} 
 				newCIDR["protocol"] = ma["protocol"].(string)
 				newCIDR["iface"] = ma["iface"].(string)
 				newCIDR["cidr_blocks"] = cidr.(string)
-				newCIDR["nat_ip"] = strings.Replace(ma["nat_ip"].(string), "/32", "", -1)
+				newCIDR["nat_ip"] = strings.ReplaceAll(ma["nat_ip"].(string), "/32", "")
 				newCIDR["position"] = ma["position"].(string)
 				newCIDR["to_port"] = ma["to_port"].(string)
 				newCIDR["nth_every"] = ma["nth_every"].(string)
@@ -138,14 +139,15 @@ func expandCIDRInNat(nat interface{}, way string, version string) []interface{} 
 				newCIDR["action"] = way
 				switch version {
 				case ipv4ver:
-					newCIDR["nat_ip"] = strings.Replace(ma["nat_ip"].(string), "/32", "", -1)
+					newCIDR["nat_ip"] = strings.ReplaceAll(ma["nat_ip"].(string), "/32", "")
 				case ipv6ver:
-					newCIDR["nat_ip"] = strings.Replace(ma["nat_ip"].(string), "/128", "", -1)
+					newCIDR["nat_ip"] = strings.ReplaceAll(ma["nat_ip"].(string), "/128", "")
 				}
 				returnNat = append(returnNat, newCIDR)
 			}
 		}
 	}
+
 	return returnNat
 }
 
@@ -157,8 +159,10 @@ func checkNat(nat []interface{}) error {
 			return fmt.Errorf("conflict between filter_cidr_blocks and except_cidr_blocks")
 		}
 	}
+
 	return nil
 }
+
 func checkNatPositionAndCIDRList(d *schema.ResourceData) error {
 	lenONCIDR := len(d.Get("on_cidr_blocks").(*schema.Set).List())
 	for _, snat := range d.Get("snat").(*schema.Set).List() {
@@ -183,5 +187,6 @@ func checkNatPositionAndCIDRList(d *schema.ResourceData) error {
 			}
 		}
 	}
+
 	return nil
 }

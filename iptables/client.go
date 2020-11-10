@@ -12,7 +12,7 @@ import (
 	"strings"
 )
 
-// Client = provider configuration
+// Client = provider configuration.
 type Client struct {
 	HTTPS      bool
 	Insecure   bool
@@ -25,7 +25,7 @@ type Client struct {
 	AllowedIPs []interface{}
 }
 
-// Rule struc for generate iptables line
+// Rule struc for generate iptables line.
 type Rule struct {
 	Except    bool
 	Fragment  bool
@@ -52,7 +52,7 @@ type Rule struct {
 	Tcpmss    string
 }
 
-// NewClient configure
+// NewClient configure.
 func NewClient(firewallIP string, firewallPortAPI int, allowedIps []interface{},
 	https bool, insecure bool,
 	logname string, login string, password string,
@@ -90,7 +90,7 @@ func NewClient(firewallIP string, firewallPortAPI int, allowedIps []interface{},
 				Proto:     "tcp",
 				IfaceIn:   "*",
 				IfaceOut:  "*",
-				IPSrc:     strings.Replace(cidr.(string), "/", "_", -1),
+				IPSrc:     strings.ReplaceAll(cidr.(string), "/", "_"),
 				IPDst:     client.FirewallIP,
 				Sports:    "0",
 				Dports:    strconv.Itoa(client.Port),
@@ -117,7 +117,7 @@ func NewClient(firewallIP string, firewallPortAPI int, allowedIps []interface{},
 				Proto:    "tcp",
 				IfaceIn:  "*",
 				IfaceOut: "*",
-				IPSrc:    strings.Replace(cidr.(string), "/", "_", -1),
+				IPSrc:    strings.ReplaceAll(cidr.(string), "/", "_"),
 				IPDst:    client.FirewallIP,
 				Sports:   "0",
 				Dports:   strconv.Itoa(client.Port),
@@ -142,7 +142,7 @@ func NewClient(firewallIP string, firewallPortAPI int, allowedIps []interface{},
 				IfaceIn:  "*",
 				IfaceOut: "*",
 				IPSrc:    client.FirewallIP,
-				IPDst:    strings.Replace(cidr.(string), "/", "_", -1),
+				IPDst:    strings.ReplaceAll(cidr.(string), "/", "_"),
 				Sports:   strconv.Itoa(client.Port),
 				Dports:   "0",
 				Position: "?",
@@ -286,9 +286,9 @@ func (client *Client) newRequest(method string, uriString string) (*http.Request
 		urLString = "http://" + IP + ":" + port + uriString + "?&logname=" + client.Logname
 	}
 	if client.HTTPS {
-		urLString = strings.Replace(urLString, "http://", "https://", -1)
+		urLString = strings.ReplaceAll(urLString, "http://", "https://")
 	}
-	req, err := http.NewRequest(method, urLString, nil)
+	req, err := http.NewRequest(method, urLString, nil) // nolint: noctx
 	if client.Login != "" && client.Password != "" {
 		req.SetBasicAuth(client.Login, client.Password)
 	}
@@ -296,6 +296,7 @@ func (client *Client) newRequest(method string, uriString string) (*http.Request
 	if err != nil {
 		return nil, fmt.Errorf("error during creation of request: %s", err)
 	}
+
 	return req, nil
 }
 
@@ -352,6 +353,7 @@ func (client *Client) rulesAPI(version string, rule Rule, method string) (bool, 
 	resp, err := httpClient.Do(req)
 	if err != nil {
 		log.Printf("error when do request %s", err)
+
 		return false, err
 	}
 	defer resp.Body.Close()
@@ -367,6 +369,7 @@ func (client *Client) rulesAPI(version string, rule Rule, method string) (bool, 
 	if resp.StatusCode == http.StatusConflict {
 		return false, errors.New("conflict with position")
 	}
+
 	return false, errors.New(string(body))
 }
 
@@ -414,6 +417,7 @@ func (client *Client) natAPI(version string, rule Rule, method string) (bool, er
 	resp, err := httpClient.Do(req)
 	if err != nil {
 		log.Printf("rrror when do request %s", err)
+
 		return false, err
 	}
 	defer resp.Body.Close()
@@ -429,8 +433,10 @@ func (client *Client) natAPI(version string, rule Rule, method string) (bool, er
 	if resp.StatusCode == http.StatusConflict {
 		return false, errors.New("conflict with position")
 	}
+
 	return false, errors.New(string(body))
 }
+
 func (client *Client) rawAPI(version string, rule Rule, method string) (bool, error) {
 	var uriString []string
 	if version == "v4" {
@@ -484,6 +490,7 @@ func (client *Client) rawAPI(version string, rule Rule, method string) (bool, er
 	resp, err := httpClient.Do(req)
 	if err != nil {
 		log.Printf("error when do request %s", err)
+
 		return false, err
 	}
 	defer resp.Body.Close()
@@ -499,6 +506,7 @@ func (client *Client) rawAPI(version string, rule Rule, method string) (bool, er
 	if resp.StatusCode == http.StatusConflict {
 		return false, errors.New("conflict with position")
 	}
+
 	return false, errors.New(string(body))
 }
 
@@ -529,6 +537,7 @@ func (client *Client) chainAPI(version string, chain string, method string) (boo
 	resp, err := httpClient.Do(req)
 	if err != nil {
 		log.Printf("error when do request %s", err)
+
 		return false, err
 	}
 	defer resp.Body.Close()
@@ -544,6 +553,7 @@ func (client *Client) chainAPI(version string, chain string, method string) (boo
 	if resp.StatusCode == http.StatusUnauthorized {
 		return false, errors.New(strings.Join([]string{client.FirewallIP, ": You are Unauthorized"}, " "))
 	}
+
 	return false, errors.New(string(body))
 }
 
@@ -573,6 +583,7 @@ func (client *Client) save(version string) error {
 	resp, err := httpClient.Do(req)
 	if err != nil {
 		log.Printf("error when do request %s", err)
+
 		return err
 	}
 	defer resp.Body.Close()
@@ -581,21 +592,26 @@ func (client *Client) save(version string) error {
 	if resp.StatusCode != http.StatusOK {
 		return errors.New(string(body))
 	}
+
 	return nil
 }
 
 func (client *Client) chainAPIV4(chain string, method string) (bool, error) {
 	return client.chainAPI("v4", chain, method)
 }
+
 func (client *Client) rulesAPIV4(rule Rule, method string) (bool, error) {
 	return client.rulesAPI("v4", rule, method)
 }
+
 func (client *Client) natAPIV4(rule Rule, method string) (bool, error) {
 	return client.natAPI("v4", rule, method)
 }
+
 func (client *Client) rawAPIV4(rule Rule, method string) (bool, error) {
 	return client.rawAPI("v4", rule, method)
 }
+
 func (client *Client) saveV4() error {
 	return client.save("v4")
 }
@@ -603,15 +619,19 @@ func (client *Client) saveV4() error {
 func (client *Client) chainAPIV6(chain string, method string) (bool, error) {
 	return client.chainAPI("v6", chain, method)
 }
+
 func (client *Client) rulesAPIV6(rule Rule, method string) (bool, error) {
 	return client.rulesAPI("v6", rule, method)
 }
+
 func (client *Client) natAPIV6(rule Rule, method string) (bool, error) {
 	return client.natAPI("v6", rule, method)
 }
+
 func (client *Client) rawAPIV6(rule Rule, method string) (bool, error) {
 	return client.rawAPI("v6", rule, method)
 }
+
 func (client *Client) saveV6() error {
 	return client.save("v6")
 }
