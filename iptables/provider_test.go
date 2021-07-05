@@ -1,8 +1,9 @@
 package iptables_test
 
 import (
-	"terraform-provider-iptables/iptables"
 	"testing"
+
+	"github.com/jeremmfr/terraform-provider-iptables/iptables"
 
 	"github.com/hashicorp/terraform/helper/schema"
 	"github.com/hashicorp/terraform/terraform"
