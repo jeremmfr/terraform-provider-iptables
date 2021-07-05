@@ -144,8 +144,7 @@ func resourceNat() *schema.Resource {
 }
 
 func resourceNatCreate(d *schema.ResourceData, m interface{}) error {
-	err := resourceNatUpdate(d, m)
-	if err != nil {
+	if err := resourceNatUpdate(d, m); err != nil {
 		return err
 	}
 	d.SetId(d.Get("name").(string) + "!")

@@ -108,8 +108,7 @@ func resourceRaw() *schema.Resource {
 }
 
 func resourceRawCreate(d *schema.ResourceData, m interface{}) error {
-	err := resourceRawUpdate(d, m)
-	if err != nil {
+	if err := resourceRawUpdate(d, m); err != nil {
 		return err
 	}
 	d.SetId(d.Get("name").(string) + "!")
@@ -175,8 +174,7 @@ func resourceRawUpdate(d *schema.ResourceData, m interface{}) error {
 		}
 	}
 	client := m.(*Client)
-	err := client.saveV4()
-	if err != nil {
+	if err := client.saveV4(); err != nil {
 		return fmt.Errorf("iptables save failed : %s", err)
 	}
 

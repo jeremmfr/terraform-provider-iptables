@@ -279,7 +279,7 @@ func (client *Client) newRequest(method string, uriString string) (*http.Request
 	port := strconv.Itoa(client.Port)
 
 	matched := strings.Contains(uriString, "?")
-	urLString := ""
+	var urLString string
 	if matched {
 		urLString = "http://" + IP + ":" + port + uriString + "&logname=" + client.Logname
 	} else {
