@@ -175,8 +175,7 @@ func resourceRawIPv6Update(d *schema.ResourceData, m interface{}) error {
 		}
 	}
 	client := m.(*Client)
-	err := client.saveV6()
-	if err != nil {
+	if err := client.saveV6(); err != nil {
 		return fmt.Errorf("ip6tables save failed : %s", err)
 	}
 

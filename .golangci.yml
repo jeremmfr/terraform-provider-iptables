@@ -1,14 +1,25 @@
+run:
+  timeout: 5m
 linters:
   enable-all: true
   disable:
-    - dupl
+    - maligned # deprecated 1.38
+    - interfacer # deprecated 1.38
+    - scopelint # deprecated 1.39
+    - golint # deprecated 1.41
     - funlen
+    - dupl
     - wsl
+    - gomnd
+    - goerr113 
     - nestif
-    - errorlint
-    - goerr113
     - exhaustivestruct
+    - paralleltest
+    - gci
+    - cyclop
+    - forcetypeassert
     - wrapcheck
+    - errorlint
 linters-settings:
   gocyclo:
     # minimal code complexity to report, 30 by default
@@ -21,3 +32,4 @@ issues:
     - text: "TLS InsecureSkipVerify set true"
       linters:
         - gosec
+   

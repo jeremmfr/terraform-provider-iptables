@@ -1,4 +1,4 @@
-module terraform-provider-iptables
+module github.com/jeremmfr/terraform-provider-iptables
 
 go 1.13
 

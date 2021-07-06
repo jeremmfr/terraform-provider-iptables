@@ -66,7 +66,6 @@ func Provider() terraform.ResourceProvider {
 			"vault_enable": {
 				Type:          schema.TypeBool,
 				Optional:      true,
-				Default:       false,
 				ConflictsWith: []string{"login", "password"},
 			},
 			"vault_path": {

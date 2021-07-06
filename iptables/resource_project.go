@@ -314,8 +314,8 @@ func resourceProjectDelete(d *schema.ResourceData, m interface{}) error {
 		}
 	}
 
-	delete, err := client.chainAPIV4(d.Get("name").(string), httpDel)
-	if !delete || err != nil {
+	chainDeleted, err := client.chainAPIV4(d.Get("name").(string), httpDel)
+	if !chainDeleted || err != nil {
 		return fmt.Errorf("delete project %s failed : %s", d.Get("name"), err)
 	}
 	if d.Get("position").(int) != 0 {

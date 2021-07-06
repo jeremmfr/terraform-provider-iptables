@@ -329,8 +329,8 @@ func resourceProjectIPv6Delete(d *schema.ResourceData, m interface{}) error {
 			return err
 		}
 	}
-	delete, err := client.chainAPIV6(d.Get("name").(string), httpDel)
-	if !delete || err != nil {
+	chainDeleted, err := client.chainAPIV6(d.Get("name").(string), httpDel)
+	if !chainDeleted || err != nil {
 		return fmt.Errorf("delete project %s failed : %s", d.Get("name"), err)
 	}
 	if d.Get("position").(int) != 0 {
