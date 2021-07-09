@@ -6,8 +6,8 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/hashicorp/terraform-plugin-sdk/helper/hashcode"
-	"github.com/hashicorp/terraform-plugin-sdk/helper/schema"
+	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
+	"github.com/jeremmfr/terraform-provider-iptables/internal/helper/hashcode"
 )
 
 func resourceNatIPv6() *schema.Resource {
