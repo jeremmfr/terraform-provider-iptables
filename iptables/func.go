@@ -3,12 +3,15 @@ package iptables
 import (
 	"bytes"
 	"fmt"
+	"hash/crc32"
 	"log"
 	"net"
 	"strconv"
 	"strings"
 
-	"github.com/hashicorp/terraform/helper/schema"
+	"github.com/hashicorp/go-cty/cty"
+	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
+	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 )
 
 const (
@@ -230,18 +233,26 @@ func checkIPRange(network string) error {
 	return nil
 }
 
-func validateCIDRNetworkOrHostV4() schema.SchemaValidateFunc {
-	return func(i interface{}, k string) (s []string, es []error) {
+func validateCIDRNetworkOrHostV4() schema.SchemaValidateDiagFunc {
+	return func(i interface{}, path cty.Path) (diags diag.Diagnostics) {
 		v := i.(string)
 		if strings.Contains(v, "-") {
 			ips := strings.Split(v, "-")
 			if len(ips) != numberElementsInIPRange {
-				es = append(es, fmt.Errorf("%v is not a valid IP range", v))
+				diags = append(diags, diag.Diagnostic{
+					Severity:      diag.Error,
+					Summary:       fmt.Sprintf("%v is not a valid IP range", v),
+					AttributePath: path,
+				})
 			}
 			ip1 := net.ParseIP(ips[0])
 			ip2 := net.ParseIP(ips[1])
 			if ip1 == nil || ip2 == nil || bytes.Compare(ip1, ip2) > 0 {
-				es = append(es, fmt.Errorf("%v is not a valid IP range", v))
+				diags = append(diags, diag.Diagnostic{
+					Severity:      diag.Error,
+					Summary:       fmt.Sprintf("%v is not a valid IP range", v),
+					AttributePath: path,
+				})
 			}
 		} else {
 			network := v
@@ -250,10 +261,18 @@ func validateCIDRNetworkOrHostV4() schema.SchemaValidateFunc {
 			}
 			_, ipnet, err := net.ParseCIDR(network)
 			if err != nil {
-				es = append(es, fmt.Errorf("%v is not a valid network CIDR or host", v))
+				diags = append(diags, diag.Diagnostic{
+					Severity:      diag.Error,
+					Summary:       fmt.Sprintf("%v is not a valid network CIDR or host", v),
+					AttributePath: path,
+				})
 			}
 			if ipnet == nil || network != ipnet.String() {
-				es = append(es, fmt.Errorf("%v is not a valid network CIDR or host", v))
+				diags = append(diags, diag.Diagnostic{
+					Severity:      diag.Error,
+					Summary:       fmt.Sprintf("%v is not a valid network CIDR or host", v),
+					AttributePath: path,
+				})
 			}
 		}
 
@@ -261,18 +280,26 @@ func validateCIDRNetworkOrHostV4() schema.SchemaValidateFunc {
 	}
 }
 
-func validateCIDRNetworkOrHostV6() schema.SchemaValidateFunc {
-	return func(i interface{}, k string) (s []string, es []error) {
+func validateCIDRNetworkOrHostV6() schema.SchemaValidateDiagFunc {
+	return func(i interface{}, path cty.Path) (diags diag.Diagnostics) {
 		v := i.(string)
 		if strings.Contains(v, "-") {
 			ips := strings.Split(v, "-")
 			if len(ips) != numberElementsInIPRange {
-				es = append(es, fmt.Errorf("%v is not a valid IP range", v))
+				diags = append(diags, diag.Diagnostic{
+					Severity:      diag.Error,
+					Summary:       fmt.Sprintf("%v is not a valid IP range", v),
+					AttributePath: path,
+				})
 			}
 			ip1 := net.ParseIP(ips[0])
 			ip2 := net.ParseIP(ips[1])
 			if ip1 == nil || ip2 == nil || bytes.Compare(ip1, ip2) > 0 {
-				es = append(es, fmt.Errorf("%v is not a valid IP range", v))
+				diags = append(diags, diag.Diagnostic{
+					Severity:      diag.Error,
+					Summary:       fmt.Sprintf("%v is not a valid IP range", v),
+					AttributePath: path,
+				})
 			}
 		} else {
 			network := v
@@ -281,10 +308,18 @@ func validateCIDRNetworkOrHostV6() schema.SchemaValidateFunc {
 			}
 			_, ipnet, err := net.ParseCIDR(network)
 			if err != nil {
-				es = append(es, fmt.Errorf("%v is not a valid network CIDR or host", v))
+				diags = append(diags, diag.Diagnostic{
+					Severity:      diag.Error,
+					Summary:       fmt.Sprintf("%v is not a valid network CIDR or host", v),
+					AttributePath: path,
+				})
 			}
 			if ipnet == nil || network != ipnet.String() {
-				es = append(es, fmt.Errorf("%v is not a valid network CIDR or host", v))
+				diags = append(diags, diag.Diagnostic{
+					Severity:      diag.Error,
+					Summary:       fmt.Sprintf("%v is not a valid network CIDR or host", v),
+					AttributePath: path,
+				})
 			}
 		}
 
@@ -298,4 +333,16 @@ func absolute(x int) int {
 	}
 
 	return x
+}
+
+func hashcodeString(s string) int {
+	v := int(crc32.ChecksumIEEE([]byte(s)))
+	if v >= 0 {
+		return v
+	}
+	if -v >= 0 {
+		return -v
+	}
+	// v == MinInt
+	return 0
 }

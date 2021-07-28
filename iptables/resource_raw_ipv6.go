@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/hashicorp/terraform/helper/schema"
+	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 )
 
 func resourceRawIPv6() *schema.Resource {
@@ -45,18 +45,18 @@ func resourceRawIPv6() *schema.Resource {
 							Default:  "0",
 						},
 						"src_cidr_blocks": {
-							Type:         schema.TypeString,
-							Optional:     true,
-							StateFunc:    protocolStateFunc,
-							Default:      "::/0",
-							ValidateFunc: validateCIDRNetworkOrHostV6(),
+							Type:             schema.TypeString,
+							Optional:         true,
+							StateFunc:        protocolStateFunc,
+							Default:          "::/0",
+							ValidateDiagFunc: validateCIDRNetworkOrHostV6(),
 						},
 						"dst_cidr_blocks": {
-							Type:         schema.TypeString,
-							Optional:     true,
-							StateFunc:    protocolStateFunc,
-							Default:      "::/0",
-							ValidateFunc: validateCIDRNetworkOrHostV6(),
+							Type:             schema.TypeString,
+							Optional:         true,
+							StateFunc:        protocolStateFunc,
+							Default:          "::/0",
+							ValidateDiagFunc: validateCIDRNetworkOrHostV6(),
 						},
 						"iface_out": {
 							Type:      schema.TypeString,

@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/hashicorp/terraform/helper/schema"
+	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 )
 
 func resourceRaw() *schema.Resource {
@@ -45,18 +45,18 @@ func resourceRaw() *schema.Resource {
 							Default:  "0",
 						},
 						"src_cidr_blocks": {
-							Type:         schema.TypeString,
-							Optional:     true,
-							StateFunc:    protocolStateFunc,
-							Default:      "0.0.0.0/0",
-							ValidateFunc: validateCIDRNetworkOrHostV4(),
+							Type:             schema.TypeString,
+							Optional:         true,
+							StateFunc:        protocolStateFunc,
+							Default:          "0.0.0.0/0",
+							ValidateDiagFunc: validateCIDRNetworkOrHostV4(),
 						},
 						"dst_cidr_blocks": {
-							Type:         schema.TypeString,
-							Optional:     true,
-							StateFunc:    protocolStateFunc,
-							Default:      "0.0.0.0/0",
-							ValidateFunc: validateCIDRNetworkOrHostV4(),
+							Type:             schema.TypeString,
+							Optional:         true,
+							StateFunc:        protocolStateFunc,
+							Default:          "0.0.0.0/0",
+							ValidateDiagFunc: validateCIDRNetworkOrHostV4(),
 						},
 						"iface_out": {
 							Type:      schema.TypeString,

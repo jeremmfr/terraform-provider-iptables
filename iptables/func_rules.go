@@ -5,8 +5,7 @@ import (
 	"fmt"
 	"sort"
 
-	"github.com/hashicorp/terraform/helper/hashcode"
-	"github.com/hashicorp/terraform/helper/schema"
+	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 )
 
 func ruleHash(v interface{}) int {
@@ -36,7 +35,7 @@ func ruleHash(v interface{}) int {
 		}
 	}
 
-	return hashcode.String(buf.String())
+	return hashcodeString(buf.String())
 }
 
 func expandCIDRInGressList(gress []interface{}, version string) []interface{} {

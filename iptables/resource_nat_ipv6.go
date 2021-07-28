@@ -6,8 +6,7 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/hashicorp/terraform/helper/hashcode"
-	"github.com/hashicorp/terraform/helper/schema"
+	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 )
 
 func resourceNatIPv6() *schema.Resource {
@@ -53,9 +52,9 @@ func resourceNatIPv6() *schema.Resource {
 							Elem:     &schema.Schema{Type: schema.TypeString},
 						},
 						"except_cidr_blocks": {
-							Type:         schema.TypeString,
-							Optional:     true,
-							ValidateFunc: validateCIDRNetworkOrHostV6(),
+							Type:             schema.TypeString,
+							Optional:         true,
+							ValidateDiagFunc: validateCIDRNetworkOrHostV6(),
 						},
 						"nat_ip": {
 							Type:     schema.TypeString,
@@ -107,9 +106,9 @@ func resourceNatIPv6() *schema.Resource {
 							Elem:     &schema.Schema{Type: schema.TypeString},
 						},
 						"except_cidr_blocks": {
-							Type:         schema.TypeString,
-							Optional:     true,
-							ValidateFunc: validateCIDRNetworkOrHostV6(),
+							Type:             schema.TypeString,
+							Optional:         true,
+							ValidateDiagFunc: validateCIDRNetworkOrHostV6(),
 						},
 						"nat_ip": {
 							Type:     schema.TypeString,
@@ -255,7 +254,7 @@ func natHashV6(v interface{}) int {
 		}
 	}
 
-	return hashcode.String(buf.String())
+	return hashcodeString(buf.String())
 }
 
 func natReadOnCIDRV6(onCIDRList []interface{}, d *schema.ResourceData, m interface{}) error {
