@@ -1,18 +1,20 @@
 package iptables
 
 import (
+	"context"
 	"fmt"
 	"strings"
 
+	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 )
 
 func resourceRulesIPv6() *schema.Resource {
 	return &schema.Resource{
-		Create: resourceRulesIPv6Create,
-		Read:   resourceRulesIPv6Read,
-		Update: resourceRulesIPv6Update,
-		Delete: resourceRulesIPv6Delete,
+		CreateContext: resourceRulesIPv6Create,
+		ReadContext:   resourceRulesIPv6Read,
+		UpdateContext: resourceRulesIPv6Update,
+		DeleteContext: resourceRulesIPv6Delete,
 		Schema: map[string]*schema.Schema{
 			"name": {
 				Type:     schema.TypeString,
@@ -200,29 +202,28 @@ func resourceRulesIPv6() *schema.Resource {
 	}
 }
 
-func resourceRulesIPv6Create(d *schema.ResourceData, m interface{}) error {
+func resourceRulesIPv6Create(ctx context.Context, d *schema.ResourceData, m interface{}) diag.Diagnostics {
 	client := m.(*Client)
 	if !client.IPv6 {
-		return fmt.Errorf("ipv6 not enable on provider")
+		return diag.FromErr(fmt.Errorf("ipv6 not enable on provider"))
 	}
 
-	checkProcject, err := client.chainAPIV6(d.Get("project").(string), httpGet)
+	checkProcject, err := client.chainAPIV6(ctx, d.Get("project").(string), httpGet)
 	if err != nil {
-		return fmt.Errorf("check project %s failed : %s", d.Get("project"), err)
+		return diag.FromErr(fmt.Errorf("check project %s failed : %s", d.Get("project"), err))
 	}
 	if !checkProcject {
-		return fmt.Errorf("unknown project %s", d.Get("project"))
+		return diag.FromErr(fmt.Errorf("unknown project %s", d.Get("project")))
 	}
-	err = resourceRulesIPv6Update(d, m)
-	if err != nil {
-		return err
+	if diags := resourceRulesIPv6Update(ctx, d, m); len(diags) > 0 {
+		return diags
 	}
 	d.SetId(d.Get("name").(string) + "!")
 
 	return nil
 }
 
-func resourceRulesIPv6Read(d *schema.ResourceData, m interface{}) error {
+func resourceRulesIPv6Read(ctx context.Context, d *schema.ResourceData, m interface{}) diag.Diagnostics {
 	if d.HasChange("project") {
 		o, _ := d.GetChange("project")
 		if o != "" {
@@ -231,20 +232,20 @@ func resourceRulesIPv6Read(d *schema.ResourceData, m interface{}) error {
 				panic(tfErr)
 			}
 
-			return fmt.Errorf("you can't change project")
+			return diag.FromErr(fmt.Errorf("you can't change project"))
 		}
 	}
 
 	if d.HasChange("on_cidr_blocks") {
 		oldOnCIDR, _ := d.GetChange("on_cidr_blocks")
-		err := rulesReadOnCIDRV6(oldOnCIDR.(*schema.Set).List(), d, m)
+		err := rulesReadOnCIDRV6(ctx, oldOnCIDR.(*schema.Set).List(), d, m)
 		if err != nil {
-			return err
+			return diag.FromErr(err)
 		}
 	} else {
-		err := rulesReadOnCIDRV6(d.Get("on_cidr_blocks").(*schema.Set).List(), d, m)
+		err := rulesReadOnCIDRV6(ctx, d.Get("on_cidr_blocks").(*schema.Set).List(), d, m)
 		if err != nil {
-			return err
+			return diag.FromErr(err)
 		}
 	}
 	if (len(d.Get("ingress").(*schema.Set).List()) == 0) && (len(d.Get("egress").(*schema.Set).List()) == 0) {
@@ -254,7 +255,7 @@ func resourceRulesIPv6Read(d *schema.ResourceData, m interface{}) error {
 	return nil
 }
 
-func resourceRulesIPv6Update(d *schema.ResourceData, m interface{}) error {
+func resourceRulesIPv6Update(ctx context.Context, d *schema.ResourceData, m interface{}) diag.Diagnostics {
 	if d.HasChange("name") {
 		o, n := d.GetChange("name")
 		if o != "" {
@@ -266,87 +267,88 @@ func resourceRulesIPv6Update(d *schema.ResourceData, m interface{}) error {
 	if err != nil {
 		d.SetId("")
 
-		return err
+		return diag.FromErr(err)
 	}
 	if d.HasChange("project") {
 		o, _ := d.GetChange("project")
 		if o != "" {
 			d.SetId("")
 
-			return fmt.Errorf("you can't change project")
+			return diag.FromErr(fmt.Errorf("you can't change project"))
 		}
 	}
 
 	if d.HasChange("on_cidr_blocks") {
 		oldOnCIDR, newOnCIDR := d.GetChange("on_cidr_blocks")
 		onCIDRRemove := computeRemove(oldOnCIDR.(*schema.Set).List(), newOnCIDR.(*schema.Set).List())
-		err = rulesRemoveOnCIDRV6(onCIDRRemove, d, m)
+		err = rulesRemoveOnCIDRV6(ctx, onCIDRRemove, d, m)
 		if err != nil {
 			d.SetId("")
 
-			return err
+			return diag.FromErr(err)
 		}
-		err = rulesAddOnCIDRV6(d.Get("on_cidr_blocks").(*schema.Set).List(), d, m)
+		err = rulesAddOnCIDRV6(ctx, d.Get("on_cidr_blocks").(*schema.Set).List(), d, m)
 		if err != nil {
 			d.SetId("")
 
-			return err
+			return diag.FromErr(err)
 		}
 	} else {
-		err = rulesAddOnCIDRV6(d.Get("on_cidr_blocks").(*schema.Set).List(), d, m)
+		err = rulesAddOnCIDRV6(ctx, d.Get("on_cidr_blocks").(*schema.Set).List(), d, m)
 		if err != nil {
 			d.SetId("")
 
-			return err
+			return diag.FromErr(err)
 		}
 	}
 	client := m.(*Client)
-	err = client.saveV6()
+	err = client.saveV6(ctx)
 	if err != nil {
-		return fmt.Errorf("ip6tables save failed : %s", err)
+		return diag.FromErr(fmt.Errorf("ip6tables save failed : %s", err))
 	}
 
 	return nil
 }
 
-func resourceRulesIPv6Delete(d *schema.ResourceData, m interface{}) error {
-	err := rulesRemoveOnCIDRV6(d.Get("on_cidr_blocks").(*schema.Set).List(), d, m)
+func resourceRulesIPv6Delete(ctx context.Context, d *schema.ResourceData, m interface{}) diag.Diagnostics {
+	err := rulesRemoveOnCIDRV6(ctx, d.Get("on_cidr_blocks").(*schema.Set).List(), d, m)
 	if err != nil {
 		d.SetId(d.Get("name").(string) + "!")
 
-		return err
+		return diag.FromErr(err)
 	}
 	client := m.(*Client)
-	err = client.saveV6()
+	err = client.saveV6(ctx)
 	if err != nil {
-		return fmt.Errorf("ip6tables save failed : %s", err)
+		return diag.FromErr(fmt.Errorf("ip6tables save failed : %s", err))
 	}
 
 	return nil
 }
 
-func rulesReadOnCIDRV6(onCIDRList []interface{}, d *schema.ResourceData, m interface{}) error {
+func rulesReadOnCIDRV6(ctx context.Context, onCIDRList []interface{}, d *schema.ResourceData, m interface{}) error {
 	for _, cidr := range onCIDRList {
 		if d.HasChange("ingress") {
 			oldIngress, _ := d.GetChange("ingress")
-			err := gressListCommandV6(cidr.(string), oldIngress.(*schema.Set).List(), wayIngress, httpGet, d, m, false)
+			err := gressListCommandV6(ctx, cidr.(string), oldIngress.(*schema.Set).List(), wayIngress, httpGet, d, m, false)
 			if err != nil {
 				return err
 			}
 		} else {
-			err := gressListCommandV6(cidr.(string), d.Get("ingress").(*schema.Set).List(), wayIngress, httpGet, d, m, false)
+			err := gressListCommandV6(ctx,
+				cidr.(string), d.Get("ingress").(*schema.Set).List(), wayIngress, httpGet, d, m, false)
 			if err != nil {
 				return err
 			}
 		}
 		if d.HasChange("egress") {
 			oldEgress, _ := d.GetChange("egress")
-			err := gressListCommandV6(cidr.(string), oldEgress.(*schema.Set).List(), wayEgress, httpGet, d, m, false)
+			err := gressListCommandV6(ctx, cidr.(string), oldEgress.(*schema.Set).List(), wayEgress, httpGet, d, m, false)
 			if err != nil {
 				return err
 			}
 		} else {
-			err := gressListCommandV6(cidr.(string), d.Get("egress").(*schema.Set).List(), wayEgress, httpGet, d, m, false)
+			err := gressListCommandV6(ctx, cidr.(string), d.Get("egress").(*schema.Set).List(), wayEgress, httpGet, d, m, false)
 			if err != nil {
 				return err
 			}
@@ -356,28 +358,29 @@ func rulesReadOnCIDRV6(onCIDRList []interface{}, d *schema.ResourceData, m inter
 	return nil
 }
 
-func rulesRemoveOnCIDRV6(onCIDRList []interface{}, d *schema.ResourceData, m interface{}) error {
+func rulesRemoveOnCIDRV6(ctx context.Context, onCIDRList []interface{}, d *schema.ResourceData, m interface{}) error {
 	for _, cidr := range onCIDRList {
 		if d.HasChange("ingress") {
 			oldIngress, _ := d.GetChange("ingress")
-			err := gressListCommandV6(cidr.(string), oldIngress.(*schema.Set).List(), wayIngress, httpDel, d, m, false)
+			err := gressListCommandV6(ctx, cidr.(string), oldIngress.(*schema.Set).List(), wayIngress, httpDel, d, m, false)
 			if err != nil {
 				return err
 			}
 		} else {
-			err := gressListCommandV6(cidr.(string), d.Get("ingress").(*schema.Set).List(), wayIngress, httpDel, d, m, false)
+			err := gressListCommandV6(ctx,
+				cidr.(string), d.Get("ingress").(*schema.Set).List(), wayIngress, httpDel, d, m, false)
 			if err != nil {
 				return err
 			}
 		}
 		if d.HasChange("egress") {
 			oldEgress, _ := d.GetChange("egress")
-			err := gressListCommandV6(cidr.(string), oldEgress.(*schema.Set).List(), wayEgress, httpDel, d, m, false)
+			err := gressListCommandV6(ctx, cidr.(string), oldEgress.(*schema.Set).List(), wayEgress, httpDel, d, m, false)
 			if err != nil {
 				return err
 			}
 		} else {
-			err := gressListCommandV6(cidr.(string), d.Get("egress").(*schema.Set).List(), wayEgress, httpDel, d, m, false)
+			err := gressListCommandV6(ctx, cidr.(string), d.Get("egress").(*schema.Set).List(), wayEgress, httpDel, d, m, false)
 			if err != nil {
 				return err
 			}
@@ -387,7 +390,7 @@ func rulesRemoveOnCIDRV6(onCIDRList []interface{}, d *schema.ResourceData, m int
 	return nil
 }
 
-func rulesAddOnCIDRV6(onCIDRList []interface{}, d *schema.ResourceData, m interface{}) error {
+func rulesAddOnCIDRV6(ctx context.Context, onCIDRList []interface{}, d *schema.ResourceData, m interface{}) error {
 	for _, cidr := range onCIDRList {
 		err := checkCIDRBlocksString(cidr.(string), ipv6ver)
 		if err != nil {
@@ -404,16 +407,19 @@ func rulesAddOnCIDRV6(onCIDRList []interface{}, d *schema.ResourceData, m interf
 			//			computation of expanded deleted gress list
 			oldIngressSetExpandedRemove := computeOutSlicesOfMap(oldIngressSetDiffExpanded, newIngressSetDiffExpanded)
 
-			err = gressListCommandV6(cidr.(string), oldIngressSetExpandedRemove, wayIngress, httpDel, d, m, true)
+			err = gressListCommandV6(ctx,
+				cidr.(string), oldIngressSetExpandedRemove, wayIngress, httpDel, d, m, true)
 			if err != nil {
 				return err
 			}
-			err := gressListCommandV6(cidr.(string), newIngress.(*schema.Set).List(), wayIngress, httpPut, d, m, false)
+			err := gressListCommandV6(ctx,
+				cidr.(string), newIngress.(*schema.Set).List(), wayIngress, httpPut, d, m, false)
 			if err != nil {
 				return err
 			}
 		} else {
-			err := gressListCommandV6(cidr.(string), d.Get("ingress").(*schema.Set).List(), wayIngress, httpPut, d, m, false)
+			err := gressListCommandV6(ctx,
+				cidr.(string), d.Get("ingress").(*schema.Set).List(), wayIngress, httpPut, d, m, false)
 			if err != nil {
 				return err
 			}
@@ -429,16 +435,19 @@ func rulesAddOnCIDRV6(onCIDRList []interface{}, d *schema.ResourceData, m interf
 			//			computation of expanded deleted gress list
 			oldEgressSetExpandedRemove := computeOutSlicesOfMap(oldEgressSetDiffExpanded, newEgressSetDiffExpanded)
 
-			err := gressListCommandV6(cidr.(string), oldEgressSetExpandedRemove, wayEgress, httpDel, d, m, true)
+			err := gressListCommandV6(ctx,
+				cidr.(string), oldEgressSetExpandedRemove, wayEgress, httpDel, d, m, true)
 			if err != nil {
 				return err
 			}
-			err = gressListCommandV6(cidr.(string), newEgress.(*schema.Set).List(), wayEgress, httpPut, d, m, false)
+			err = gressListCommandV6(ctx,
+				cidr.(string), newEgress.(*schema.Set).List(), wayEgress, httpPut, d, m, false)
 			if err != nil {
 				return err
 			}
 		} else {
-			err := gressListCommandV6(cidr.(string), d.Get("egress").(*schema.Set).List(), wayEgress, httpPut, d, m, false)
+			err := gressListCommandV6(ctx,
+				cidr.(string), d.Get("egress").(*schema.Set).List(), wayEgress, httpPut, d, m, false)
 			if err != nil {
 				return err
 			}
@@ -448,7 +457,7 @@ func rulesAddOnCIDRV6(onCIDRList []interface{}, d *schema.ResourceData, m interf
 	return nil
 }
 
-func gressListCommandV6(onCIDR string, gressList []interface{}, way string, method string,
+func gressListCommandV6(ctx context.Context, onCIDR string, gressList []interface{}, way string, method string,
 	d *schema.ResourceData, m interface{}, cidrExpanded bool) error {
 	switch method {
 	case httpGet:
@@ -461,7 +470,7 @@ func gressListCommandV6(onCIDR string, gressList []interface{}, way string, meth
 			gressOKnoPos := false
 			gressExpand := expandCIDRInGress(gressElement, ipv6ver)
 			for _, gressExpandElement := range gressExpand {
-				err := gressCmdV6(onCIDR, gressExpandElement, way, httpGet, d, m)
+				err := gressCmdV6(ctx, onCIDR, gressExpandElement, way, httpGet, d, m)
 				if err != nil {
 					if !strings.Contains(err.Error(), noExists) {
 						return err
@@ -498,7 +507,7 @@ func gressListCommandV6(onCIDR string, gressList []interface{}, way string, meth
 	case httpDel:
 		if cidrExpanded {
 			for _, gressElement := range gressList {
-				err := gressCmdV6(onCIDR, gressElement, way, httpDel, d, m)
+				err := gressCmdV6(ctx, onCIDR, gressElement, way, httpDel, d, m)
 				if err != nil {
 					return err
 				}
@@ -507,7 +516,7 @@ func gressListCommandV6(onCIDR string, gressList []interface{}, way string, meth
 			for _, gressElement := range gressList {
 				gressExpand := expandCIDRInGress(gressElement, ipv6ver)
 				for _, gressExpandElement := range gressExpand {
-					err := gressCmdV6(onCIDR, gressExpandElement, way, httpDel, d, m)
+					err := gressCmdV6(ctx, onCIDR, gressExpandElement, way, httpDel, d, m)
 					if err != nil {
 						return err
 					}
@@ -523,7 +532,7 @@ func gressListCommandV6(onCIDR string, gressList []interface{}, way string, meth
 				if err != nil {
 					return err
 				}
-				err = gressCmdV6(onCIDR, gressElement, way, httpPut, d, m)
+				err = gressCmdV6(ctx, onCIDR, gressElement, way, httpPut, d, m)
 				if err != nil {
 					return err
 				}
@@ -536,7 +545,7 @@ func gressListCommandV6(onCIDR string, gressList []interface{}, way string, meth
 					if err != nil {
 						return err
 					}
-					err = gressCmdV6(onCIDR, gressExpandElement, way, httpPut, d, m)
+					err = gressCmdV6(ctx, onCIDR, gressExpandElement, way, httpPut, d, m)
 					if err != nil {
 						return err
 					}
@@ -550,7 +559,7 @@ func gressListCommandV6(onCIDR string, gressList []interface{}, way string, meth
 	return fmt.Errorf("internal error : unknown method for gressListCommand")
 }
 
-func gressCmdV6(onCIDR string, gress interface{}, way string, method string,
+func gressCmdV6(ctx context.Context, onCIDR string, gress interface{}, way string, method string,
 	d *schema.ResourceData, m interface{}) error {
 	client := m.(*Client)
 	if !client.IPv6 {
@@ -653,56 +662,56 @@ func gressCmdV6(onCIDR string, gress interface{}, way string, method string,
 
 	switch method {
 	case httpDel:
-		ruleexistsNoPos, err := client.rulesAPIV6(ruleNoPos, httpGet)
+		ruleexistsNoPos, err := client.rulesAPIV6(ctx, ruleNoPos, httpGet)
 		if err != nil {
 			return fmt.Errorf("check rules exists for %s %v failed : %s", onCIDR, ruleNoPos, err)
 		}
 		if ruleexistsNoPos {
-			ret, err := client.rulesAPIV6(ruleNoPos, httpDel)
+			ret, err := client.rulesAPIV6(ctx, ruleNoPos, httpDel)
 			if !ret || err != nil {
 				return fmt.Errorf("delete rules %s %v failed : %s", onCIDR, ruleNoPos, err)
 			}
 		}
 	case httpPut:
-		ruleexists, err := client.rulesAPIV6(rule, httpGet)
+		ruleexists, err := client.rulesAPIV6(ctx, rule, httpGet)
 		if err != nil {
 			return fmt.Errorf("check rules exists for %s %v failed : %s", onCIDR, rule, err)
 		}
 		if !ruleexists {
 			if ma["position"].(string) != "?" {
-				ruleexistsNoPos, err := client.rulesAPIV6(ruleNoPos, httpGet)
+				ruleexistsNoPos, err := client.rulesAPIV6(ctx, ruleNoPos, httpGet)
 				if err != nil {
 					return fmt.Errorf("check rules exists for %s %v failed : %s", onCIDR, ruleNoPos, err)
 				}
 				if ruleexistsNoPos {
-					ret, err := client.rulesAPIV6(ruleNoPos, httpDel)
+					ret, err := client.rulesAPIV6(ctx, ruleNoPos, httpDel)
 					if !ret || err != nil {
 						return fmt.Errorf("delete rules with bad position %s %v failed : %s", onCIDR, ruleNoPos, err)
 					}
-					ret, err = client.rulesAPIV6(rule, httpPut)
+					ret, err = client.rulesAPIV6(ctx, rule, httpPut)
 					if !ret || err != nil {
 						return fmt.Errorf("add rules %s %v failed : %s", onCIDR, rule, err)
 					}
 				} else {
-					ret, err := client.rulesAPIV6(rule, httpPut)
+					ret, err := client.rulesAPIV6(ctx, rule, httpPut)
 					if !ret || err != nil {
 						return fmt.Errorf("add rules %s %v failed : %s", onCIDR, rule, err)
 					}
 				}
 			} else {
-				ret, err := client.rulesAPIV6(rule, httpPut)
+				ret, err := client.rulesAPIV6(ctx, rule, httpPut)
 				if !ret || err != nil {
 					return fmt.Errorf("add rules %s %v failed : %s", onCIDR, rule, err)
 				}
 			}
 		}
 	case httpGet:
-		ruleexists, err := client.rulesAPIV6(rule, httpGet)
+		ruleexists, err := client.rulesAPIV6(ctx, rule, httpGet)
 		if err != nil {
 			return fmt.Errorf("check rules exists for %s %v failed : %s", onCIDR, rule, err)
 		}
 		if !ruleexists {
-			ruleexistsNoPos, err := client.rulesAPIV6(ruleNoPos, httpGet)
+			ruleexistsNoPos, err := client.rulesAPIV6(ctx, ruleNoPos, httpGet)
 			if err != nil {
 				return fmt.Errorf("check rules exists for %s %v failed : %s", onCIDR, ruleNoPos, err)
 			}

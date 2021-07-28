@@ -1,8 +1,10 @@
 package iptables
 
 import (
+	"context"
 	"os"
 
+	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 )
 
@@ -99,11 +101,11 @@ func Provider() *schema.Provider {
 			"iptables_nat_ipv6":     resourceNatIPv6(),
 			"iptables_raw_ipv6":     resourceRawIPv6(),
 		},
-		ConfigureFunc: configureProvider,
+		ConfigureContextFunc: configureProvider,
 	}
 }
 
-func configureProvider(d *schema.ResourceData) (interface{}, error) {
+func configureProvider(ctx context.Context, d *schema.ResourceData) (interface{}, diag.Diagnostics) {
 	config := Config{
 		firewallIP:       d.Get("firewall_ip").(string),
 		firewallPortAPI:  d.Get("port").(int),
@@ -120,5 +122,5 @@ func configureProvider(d *schema.ResourceData) (interface{}, error) {
 		noAddDefaultDrop: d.Get("no_add_default_drop").(bool),
 	}
 
-	return config.Client()
+	return config.Client(ctx)
 }

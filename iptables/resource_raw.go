@@ -1,18 +1,20 @@
 package iptables
 
 import (
+	"context"
 	"fmt"
 	"strings"
 
+	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 )
 
 func resourceRaw() *schema.Resource {
 	return &schema.Resource{
-		Create: resourceRawCreate,
-		Read:   resourceRawRead,
-		Update: resourceRawUpdate,
-		Delete: resourceRawDelete,
+		CreateContext: resourceRawCreate,
+		ReadContext:   resourceRawRead,
+		UpdateContext: resourceRawUpdate,
+		DeleteContext: resourceRawDelete,
 		Schema: map[string]*schema.Schema{
 			"name": {
 				Type:     schema.TypeString,
@@ -107,22 +109,22 @@ func resourceRaw() *schema.Resource {
 	}
 }
 
-func resourceRawCreate(d *schema.ResourceData, m interface{}) error {
-	if err := resourceRawUpdate(d, m); err != nil {
-		return err
+func resourceRawCreate(ctx context.Context, d *schema.ResourceData, m interface{}) diag.Diagnostics {
+	if diags := resourceRawUpdate(ctx, d, m); len(diags) > 0 {
+		return diags
 	}
 	d.SetId(d.Get("name").(string) + "!")
 
 	return nil
 }
 
-func resourceRawRead(d *schema.ResourceData, m interface{}) error {
+func resourceRawRead(ctx context.Context, d *schema.ResourceData, m interface{}) diag.Diagnostics {
 	if d.HasChange("rule") {
 		oraw, _ := d.GetChange("rule")
 		osraw := oraw.(*schema.Set)
-		rawList, err := rawRule(osraw.List(), httpGet, m)
+		rawList, err := rawRule(ctx, osraw.List(), httpGet, m)
 		if err != nil {
-			return err
+			return diag.FromErr(err)
 		}
 		tfErr := d.Set("rule", rawList)
 		if tfErr != nil {
@@ -131,9 +133,9 @@ func resourceRawRead(d *schema.ResourceData, m interface{}) error {
 	} else {
 		raw := d.Get("rule")
 		sraw := raw.(*schema.Set)
-		rawList, err := rawRule(sraw.List(), httpGet, m)
+		rawList, err := rawRule(ctx, sraw.List(), httpGet, m)
 		if err != nil {
-			return err
+			return diag.FromErr(err)
 		}
 		tfErr := d.Set("rule", rawList)
 		if tfErr != nil {
@@ -144,7 +146,7 @@ func resourceRawRead(d *schema.ResourceData, m interface{}) error {
 	return nil
 }
 
-func resourceRawUpdate(d *schema.ResourceData, m interface{}) error {
+func resourceRawUpdate(ctx context.Context, d *schema.ResourceData, m interface{}) diag.Diagnostics {
 	if d.HasChange("name") {
 		o, n := d.GetChange("name")
 		if o != "" {
@@ -160,44 +162,44 @@ func resourceRawUpdate(d *schema.ResourceData, m interface{}) error {
 		newRuleSetDiff := newRuleSet.Difference(oldRuleSet)
 
 		oldRuleSetRemove := computeOutSlicesOfMap(oldRuleSetDiff.List(), newRuleSetDiff.List())
-		_, err := rawRule(oldRuleSetRemove, httpDel, m)
+		_, err := rawRule(ctx, oldRuleSetRemove, httpDel, m)
 		if err != nil {
 			d.SetId("")
 
-			return err
+			return diag.FromErr(err)
 		}
-		_, err = rawRule(newRuleSet.List(), httpPut, m)
+		_, err = rawRule(ctx, newRuleSet.List(), httpPut, m)
 		if err != nil {
 			d.SetId("")
 
-			return err
+			return diag.FromErr(err)
 		}
 	}
 	client := m.(*Client)
-	if err := client.saveV4(); err != nil {
-		return fmt.Errorf("iptables save failed : %s", err)
+	if err := client.saveV4(ctx); err != nil {
+		return diag.FromErr(fmt.Errorf("iptables save failed : %s", err))
 	}
 
 	return nil
 }
 
-func resourceRawDelete(d *schema.ResourceData, m interface{}) error {
+func resourceRawDelete(ctx context.Context, d *schema.ResourceData, m interface{}) diag.Diagnostics {
 	rule := d.Get("rule")
 	ruleSet := rule.(*schema.Set)
-	_, err := rawRule(ruleSet.List(), httpDel, m)
+	_, err := rawRule(ctx, ruleSet.List(), httpDel, m)
 	if err != nil {
-		return err
+		return diag.FromErr(err)
 	}
 	client := m.(*Client)
-	err = client.saveV4()
+	err = client.saveV4(ctx)
 	if err != nil {
-		return fmt.Errorf("iptables save failed : %s", err)
+		return diag.FromErr(fmt.Errorf("iptables save failed : %s", err))
 	}
 
 	return nil
 }
 
-func rawRule(ruleList []interface{}, method string, m interface{}) ([]interface{}, error) {
+func rawRule(ctx context.Context, ruleList []interface{}, method string, m interface{}) ([]interface{}, error) {
 	client := m.(*Client)
 
 	var ruleListReturn []interface{}
@@ -269,58 +271,58 @@ func rawRule(ruleList []interface{}, method string, m interface{}) ([]interface{
 		}
 		switch method {
 		case httpDel:
-			ruleexistsNoPos, err := client.rawAPIV4(ruleNoPos, httpGet)
+			ruleexistsNoPos, err := client.rawAPIV4(ctx, ruleNoPos, httpGet)
 			if err != nil {
 				return nil, fmt.Errorf("check rules on raw for %s failed : %s", ma, err)
 			}
 			if ruleexistsNoPos {
-				ret, err := client.rawAPIV4(ruleNoPos, httpDel)
+				ret, err := client.rawAPIV4(ctx, ruleNoPos, httpDel)
 				if !ret || err != nil {
 					return nil, fmt.Errorf("delete rules on raw %s failed : %s", ma, err)
 				}
 			}
 		case httpPut:
-			ruleexists, err := client.rawAPIV4(rule, httpGet)
+			ruleexists, err := client.rawAPIV4(ctx, rule, httpGet)
 			if err != nil {
 				return nil, fmt.Errorf("check rules on raw for %s failed : %s", ma, err)
 			}
 			if !ruleexists {
 				if ma["position"].(string) != "?" {
-					ruleexistsNoPos, err := client.rawAPIV4(ruleNoPos, httpGet)
+					ruleexistsNoPos, err := client.rawAPIV4(ctx, ruleNoPos, httpGet)
 					if err != nil {
 						return nil, fmt.Errorf("check rules on raw for %s failed : %s", ma, err)
 					}
 					if ruleexistsNoPos {
-						ret, err := client.rawAPIV4(ruleNoPos, httpDel)
+						ret, err := client.rawAPIV4(ctx, ruleNoPos, httpDel)
 						if !ret || err != nil {
 							return nil, fmt.Errorf("delete rules with bad position on raw %s failed : %s", ma, err)
 						}
-						ret, err = client.rawAPIV4(rule, httpPut)
+						ret, err = client.rawAPIV4(ctx, rule, httpPut)
 						if !ret || err != nil {
 							return nil, fmt.Errorf("add rules on raw %s failed : %s", ma, err)
 						}
 					} else {
-						ret, err := client.rawAPIV4(rule, httpPut)
+						ret, err := client.rawAPIV4(ctx, rule, httpPut)
 						if !ret || err != nil {
 							return nil, fmt.Errorf("add rules on raw %s failed %s", ma, err)
 						}
 					}
 				} else {
-					ret, err := client.rawAPIV4(rule, httpPut)
+					ret, err := client.rawAPIV4(ctx, rule, httpPut)
 					if !ret || err != nil {
 						return nil, fmt.Errorf("add rules on raw %s failed : %s", ma, err)
 					}
 				}
 			}
 		case httpGet:
-			ruleexists, err := client.rawAPIV4(rule, httpGet)
+			ruleexists, err := client.rawAPIV4(ctx, rule, httpGet)
 			if err != nil {
 				return ruleListReturn, fmt.Errorf("check rules on raw for %s failed : %s", ma, err)
 			}
 			if ruleexists {
 				ruleListReturn = append(ruleListReturn, ma)
 			} else {
-				ruleexistsNoPos, err := client.rawAPIV4(ruleNoPos, httpGet)
+				ruleexistsNoPos, err := client.rawAPIV4(ctx, ruleNoPos, httpGet)
 				if err != nil {
 					return ruleListReturn, fmt.Errorf("check rules on raw for %v failed : %w", ruleNoPos, err)
 				}

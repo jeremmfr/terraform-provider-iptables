@@ -1,6 +1,7 @@
 package iptables
 
 import (
+	"context"
 	"crypto/tls"
 	"errors"
 	"fmt"
@@ -53,30 +54,27 @@ type Rule struct {
 }
 
 // NewClient configure.
-func NewClient(firewallIP string, firewallPortAPI int, allowedIps []interface{},
-	https bool, insecure bool,
-	logname string, login string, password string,
-	ipv6 bool, noAddDefaultDrop bool) (*Client, error) {
+func NewClient(ctx context.Context, c *Config, login string, password string) (*Client, error) {
 	client := &Client{
-		FirewallIP: firewallIP,
-		Port:       firewallPortAPI,
-		AllowedIPs: allowedIps,
-		HTTPS:      https,
-		Insecure:   insecure,
-		Logname:    logname,
+		FirewallIP: c.firewallIP,
+		Port:       c.firewallPortAPI,
+		AllowedIPs: c.allowedIPs,
+		HTTPS:      c.https,
+		Insecure:   c.insecure,
+		Logname:    c.logname,
 		Login:      login,
 		Password:   password,
-		IPv6:       ipv6,
+		IPv6:       c.ipv6Enable,
 	}
 
 	// Allow no default rules
 	if os.Getenv("CONFIG_IPTABLES_TERRAFORM_NODEFAULT") == "" {
-		checkExistsRouter, err := client.chainAPIV4("router_chain", "GET")
+		checkExistsRouter, err := client.chainAPIV4(ctx, "router_chain", "GET")
 		if err != nil {
 			return nil, err
 		}
 		if !checkExistsRouter {
-			createChain, err := client.chainAPIV4("router_chain", "PUT")
+			createChain, err := client.chainAPIV4(ctx, "router_chain", "PUT")
 			if !createChain || err != nil {
 				return nil, fmt.Errorf("create chain router failed : %s", err)
 			}
@@ -99,12 +97,12 @@ func NewClient(firewallIP string, firewallPortAPI int, allowedIps []interface{},
 				Notrack:   true,
 				Position:  "?",
 			}
-			routeexists, err := client.rawAPIV4(acceptAPI, "GET")
+			routeexists, err := client.rawAPIV4(ctx, acceptAPI, "GET")
 			if err != nil {
 				return nil, fmt.Errorf("check rules (raw) allowed IP for API for cidr %s failed : %s", cidr.(string), err)
 			}
 			if !routeexists {
-				routeCIDR, err := client.rawAPIV4(acceptAPI, "PUT")
+				routeCIDR, err := client.rawAPIV4(ctx, acceptAPI, "PUT")
 				if !routeCIDR || err != nil {
 					return nil, fmt.Errorf("create rules (raw) allowed IP for API for cidr %s failed : %s", cidr.(string), err)
 				}
@@ -123,12 +121,12 @@ func NewClient(firewallIP string, firewallPortAPI int, allowedIps []interface{},
 				Dports:   strconv.Itoa(client.Port),
 				Position: "?",
 			}
-			routeexists, err = client.rulesAPIV4(acceptAPI, "GET")
+			routeexists, err = client.rulesAPIV4(ctx, acceptAPI, "GET")
 			if err != nil {
 				return nil, fmt.Errorf("check rules (ingress) allowed IP for API for cidr %s failed : %s", cidr.(string), err)
 			}
 			if !routeexists {
-				routeCIDR, err := client.rulesAPIV4(acceptAPI, "PUT")
+				routeCIDR, err := client.rulesAPIV4(ctx, acceptAPI, "PUT")
 				if !routeCIDR || err != nil {
 					return nil, fmt.Errorf("create rules (ingress) allowed IP for API for cidr %s failed : %s", cidr.(string), err)
 				}
@@ -147,12 +145,12 @@ func NewClient(firewallIP string, firewallPortAPI int, allowedIps []interface{},
 				Dports:   "0",
 				Position: "?",
 			}
-			routeexists, err = client.rulesAPIV4(acceptAPI, "GET")
+			routeexists, err = client.rulesAPIV4(ctx, acceptAPI, "GET")
 			if err != nil {
 				return nil, fmt.Errorf("check rules (egress) allowed IP for API for cidr %s failed : %s", cidr.(string), err)
 			}
 			if !routeexists {
-				routeCIDR, err := client.rulesAPIV4(acceptAPI, "PUT")
+				routeCIDR, err := client.rulesAPIV4(ctx, acceptAPI, "PUT")
 				if !routeCIDR || err != nil {
 					return nil, fmt.Errorf("create rules (egress) allowed IP for API for cidr %s failed : %s", cidr.(string), err)
 				}
@@ -174,17 +172,17 @@ func NewClient(firewallIP string, firewallPortAPI int, allowedIps []interface{},
 				Dports:   "0",
 				Position: "?",
 			}
-			ruleexists, err := client.rulesAPIV4(routeDefault, "GET")
+			ruleexists, err := client.rulesAPIV4(ctx, routeDefault, "GET")
 			if err != nil {
 				return nil, fmt.Errorf("check default rules %s failed : %s", table, err)
 			}
 			if !ruleexists {
-				resp, err := client.rulesAPIV4(routeDefault, "PUT")
+				resp, err := client.rulesAPIV4(ctx, routeDefault, "PUT")
 				if !resp || err != nil {
 					return nil, fmt.Errorf("create default rules %s failed : %s", table, err)
 				}
 			}
-			if !noAddDefaultDrop {
+			if !c.noAddDefaultDrop {
 				ruleDrop := Rule{
 					Action:   "DROP",
 					Chain:    table,
@@ -197,25 +195,25 @@ func NewClient(firewallIP string, firewallPortAPI int, allowedIps []interface{},
 					Dports:   "0",
 					Position: "?",
 				}
-				ruleexists, err = client.rulesAPIV4(ruleDrop, "GET")
+				ruleexists, err = client.rulesAPIV4(ctx, ruleDrop, "GET")
 				if err != nil {
 					return nil, fmt.Errorf("check default rules drop %s failed : %s", table, err)
 				}
 				if !ruleexists {
-					resp, err := client.rulesAPIV4(ruleDrop, "PUT")
+					resp, err := client.rulesAPIV4(ctx, ruleDrop, "PUT")
 					if !resp || err != nil {
 						return nil, fmt.Errorf("create default rules drop %s failed : %s", table, err)
 					}
 				}
 			}
 		}
-		if ipv6 {
-			checkExistsRouter, err := client.chainAPIV6("router_chain", "GET")
+		if c.ipv6Enable {
+			checkExistsRouter, err := client.chainAPIV6(ctx, "router_chain", "GET")
 			if err != nil {
 				return nil, err
 			}
 			if !checkExistsRouter {
-				createChain, err := client.chainAPIV6("router_chain", "PUT")
+				createChain, err := client.chainAPIV6(ctx, "router_chain", "PUT")
 				if !createChain || err != nil {
 					return nil, fmt.Errorf("create chain router v6 failed : %s", err)
 				}
@@ -233,17 +231,17 @@ func NewClient(firewallIP string, firewallPortAPI int, allowedIps []interface{},
 					Dports:   "0",
 					Position: "?",
 				}
-				ruleexists, err := client.rulesAPIV6(routeDefault, "GET")
+				ruleexists, err := client.rulesAPIV6(ctx, routeDefault, "GET")
 				if err != nil {
 					return nil, fmt.Errorf("check default rules v6 %s failed : %s", table, err)
 				}
 				if !ruleexists {
-					resp, err := client.rulesAPIV6(routeDefault, "PUT")
+					resp, err := client.rulesAPIV6(ctx, routeDefault, "PUT")
 					if !resp || err != nil {
 						return nil, fmt.Errorf("create default rules v6 %s failed : %s", table, err)
 					}
 				}
-				if !noAddDefaultDrop {
+				if !c.noAddDefaultDrop {
 					ruleDrop := Rule{
 						Action:   "DROP",
 						Chain:    table,
@@ -256,12 +254,12 @@ func NewClient(firewallIP string, firewallPortAPI int, allowedIps []interface{},
 						Dports:   "0",
 						Position: "?",
 					}
-					ruleexists, err = client.rulesAPIV6(ruleDrop, "GET")
+					ruleexists, err = client.rulesAPIV6(ctx, ruleDrop, "GET")
 					if err != nil {
 						return nil, fmt.Errorf("check default rules drop v6 %s failed : %s", table, err)
 					}
 					if !ruleexists {
-						resp, err := client.rulesAPIV6(ruleDrop, "PUT")
+						resp, err := client.rulesAPIV6(ctx, ruleDrop, "PUT")
 						if !resp || err != nil {
 							return nil, fmt.Errorf("create default rules drop v6 %s failed : %s", table, err)
 						}
@@ -274,7 +272,7 @@ func NewClient(firewallIP string, firewallPortAPI int, allowedIps []interface{},
 	return client, nil
 }
 
-func (client *Client) newRequest(method string, uriString string) (*http.Request, error) {
+func (client *Client) newRequest(ctx context.Context, method string, uriString string) (*http.Request, error) {
 	IP := client.FirewallIP
 	port := strconv.Itoa(client.Port)
 
@@ -288,7 +286,7 @@ func (client *Client) newRequest(method string, uriString string) (*http.Request
 	if client.HTTPS {
 		urLString = strings.ReplaceAll(urLString, "http://", "https://")
 	}
-	req, err := http.NewRequest(method, urLString, nil) // nolint: noctx
+	req, err := http.NewRequestWithContext(ctx, method, urLString, nil)
 	if client.Login != "" && client.Password != "" {
 		req.SetBasicAuth(client.Login, client.Password)
 	}
@@ -300,7 +298,7 @@ func (client *Client) newRequest(method string, uriString string) (*http.Request
 	return req, nil
 }
 
-func (client *Client) rulesAPI(version string, rule Rule, method string) (bool, error) {
+func (client *Client) rulesAPI(ctx context.Context, version string, rule Rule, method string) (bool, error) {
 	var uriString []string
 	if version == "v4" {
 		uriString = append(uriString, "/rules/")
@@ -336,7 +334,7 @@ func (client *Client) rulesAPI(version string, rule Rule, method string) (bool, 
 		}
 	}
 
-	req, err := client.newRequest(method, strings.Join(uriString, ""))
+	req, err := client.newRequest(ctx, method, strings.Join(uriString, ""))
 	if err != nil {
 		return false, err
 	}
@@ -373,7 +371,7 @@ func (client *Client) rulesAPI(version string, rule Rule, method string) (bool, 
 	return false, errors.New(string(body))
 }
 
-func (client *Client) natAPI(version string, rule Rule, method string) (bool, error) {
+func (client *Client) natAPI(ctx context.Context, version string, rule Rule, method string) (bool, error) {
 	var uriString []string
 	if version == "v4" {
 		uriString = append(uriString, "/nat/")
@@ -400,7 +398,7 @@ func (client *Client) natAPI(version string, rule Rule, method string) (bool, er
 		}
 	}
 
-	req, err := client.newRequest(method, strings.Join(uriString, ""))
+	req, err := client.newRequest(ctx, method, strings.Join(uriString, ""))
 	if err != nil {
 		return false, err
 	}
@@ -437,7 +435,7 @@ func (client *Client) natAPI(version string, rule Rule, method string) (bool, er
 	return false, errors.New(string(body))
 }
 
-func (client *Client) rawAPI(version string, rule Rule, method string) (bool, error) {
+func (client *Client) rawAPI(ctx context.Context, version string, rule Rule, method string) (bool, error) {
 	var uriString []string
 	if version == "v4" {
 		uriString = append(uriString, "/raw/")
@@ -473,7 +471,7 @@ func (client *Client) rawAPI(version string, rule Rule, method string) (bool, er
 		}
 	}
 
-	req, err := client.newRequest(method, strings.Join(uriString, ""))
+	req, err := client.newRequest(ctx, method, strings.Join(uriString, ""))
 	if err != nil {
 		return false, err
 	}
@@ -510,7 +508,7 @@ func (client *Client) rawAPI(version string, rule Rule, method string) (bool, er
 	return false, errors.New(string(body))
 }
 
-func (client *Client) chainAPI(version string, chain string, method string) (bool, error) {
+func (client *Client) chainAPI(ctx context.Context, version string, chain string, method string) (bool, error) {
 	var uriString []string
 	if version == "v4" {
 		uriString = append(uriString, "/chain/filter/")
@@ -520,7 +518,7 @@ func (client *Client) chainAPI(version string, chain string, method string) (boo
 	}
 	uriString = append(uriString, chain, "/")
 
-	req, err := client.newRequest(method, strings.Join(uriString, ""))
+	req, err := client.newRequest(ctx, method, strings.Join(uriString, ""))
 	if err != nil {
 		return false, err
 	}
@@ -557,7 +555,7 @@ func (client *Client) chainAPI(version string, chain string, method string) (boo
 	return false, errors.New(string(body))
 }
 
-func (client *Client) save(version string) error {
+func (client *Client) save(ctx context.Context, version string) error {
 	var uriString []string
 	if version == "v4" {
 		uriString = append(uriString, "/save/")
@@ -566,7 +564,7 @@ func (client *Client) save(version string) error {
 		uriString = append(uriString, "/save_v6/")
 	}
 
-	req, err := client.newRequest("GET", strings.Join(uriString, ""))
+	req, err := client.newRequest(ctx, "GET", strings.Join(uriString, ""))
 	if err != nil {
 		return err
 	}
@@ -596,42 +594,42 @@ func (client *Client) save(version string) error {
 	return nil
 }
 
-func (client *Client) chainAPIV4(chain string, method string) (bool, error) {
-	return client.chainAPI("v4", chain, method)
+func (client *Client) chainAPIV4(ctx context.Context, chain string, method string) (bool, error) {
+	return client.chainAPI(ctx, "v4", chain, method)
 }
 
-func (client *Client) rulesAPIV4(rule Rule, method string) (bool, error) {
-	return client.rulesAPI("v4", rule, method)
+func (client *Client) rulesAPIV4(ctx context.Context, rule Rule, method string) (bool, error) {
+	return client.rulesAPI(ctx, "v4", rule, method)
 }
 
-func (client *Client) natAPIV4(rule Rule, method string) (bool, error) {
-	return client.natAPI("v4", rule, method)
+func (client *Client) natAPIV4(ctx context.Context, rule Rule, method string) (bool, error) {
+	return client.natAPI(ctx, "v4", rule, method)
 }
 
-func (client *Client) rawAPIV4(rule Rule, method string) (bool, error) {
-	return client.rawAPI("v4", rule, method)
+func (client *Client) rawAPIV4(ctx context.Context, rule Rule, method string) (bool, error) {
+	return client.rawAPI(ctx, "v4", rule, method)
 }
 
-func (client *Client) saveV4() error {
-	return client.save("v4")
+func (client *Client) saveV4(ctx context.Context) error {
+	return client.save(ctx, "v4")
 }
 
-func (client *Client) chainAPIV6(chain string, method string) (bool, error) {
-	return client.chainAPI("v6", chain, method)
+func (client *Client) chainAPIV6(ctx context.Context, chain string, method string) (bool, error) {
+	return client.chainAPI(ctx, "v6", chain, method)
 }
 
-func (client *Client) rulesAPIV6(rule Rule, method string) (bool, error) {
-	return client.rulesAPI("v6", rule, method)
+func (client *Client) rulesAPIV6(ctx context.Context, rule Rule, method string) (bool, error) {
+	return client.rulesAPI(ctx, "v6", rule, method)
 }
 
-func (client *Client) natAPIV6(rule Rule, method string) (bool, error) {
-	return client.natAPI("v6", rule, method)
+func (client *Client) natAPIV6(ctx context.Context, rule Rule, method string) (bool, error) {
+	return client.natAPI(ctx, "v6", rule, method)
 }
 
-func (client *Client) rawAPIV6(rule Rule, method string) (bool, error) {
-	return client.rawAPI("v6", rule, method)
+func (client *Client) rawAPIV6(ctx context.Context, rule Rule, method string) (bool, error) {
+	return client.rawAPI(ctx, "v6", rule, method)
 }
 
-func (client *Client) saveV6() error {
-	return client.save("v6")
+func (client *Client) saveV6(ctx context.Context) error {
+	return client.save(ctx, "v6")
 }
