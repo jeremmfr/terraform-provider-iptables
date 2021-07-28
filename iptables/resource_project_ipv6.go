@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
+	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/validation"
 )
 
 func resourceProjectIPv6() *schema.Resource {
@@ -16,18 +17,10 @@ func resourceProjectIPv6() *schema.Resource {
 		Delete: resourceProjectIPv6Delete,
 		Schema: map[string]*schema.Schema{
 			"name": {
-				Type:     schema.TypeString,
-				Required: true,
-				ForceNew: true,
-				ValidateFunc: func(v interface{}, k string) (ws []string, errors []error) {
-					value := v.(string)
-					if len(value) > maxLengthProjectName {
-						errors = append(errors, fmt.Errorf(
-							"%q cannot be longer than 30 characters", k))
-					}
-
-					return
-				},
+				Type:         schema.TypeString,
+				Required:     true,
+				ForceNew:     true,
+				ValidateFunc: validation.StringLenBetween(1, maxLengthProjectName),
 			},
 			"cidr_blocks": {
 				Type:     schema.TypeSet,
@@ -35,19 +28,11 @@ func resourceProjectIPv6() *schema.Resource {
 				Elem:     &schema.Schema{Type: schema.TypeString},
 			},
 			"position": {
-				Type:     schema.TypeInt,
-				Optional: true,
-				ForceNew: true,
-				Default:  0,
-				ValidateFunc: func(v interface{}, k string) (ws []string, errors []error) {
-					value := v.(int)
-					if value < 0 {
-						errors = append(errors, fmt.Errorf(
-							"%q cannot be lower than 0: %d", k, value))
-					}
-
-					return
-				},
+				Type:         schema.TypeInt,
+				Optional:     true,
+				ForceNew:     true,
+				Default:      0,
+				ValidateFunc: validation.IntAtLeast(0),
 			},
 		},
 	}
