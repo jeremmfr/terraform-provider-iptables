@@ -1,6 +1,6 @@
 module github.com/jeremmfr/terraform-provider-iptables
 
-go 1.13
+go 1.15
 
 require (
 	github.com/hashicorp/go-cty v1.4.1-0.20200414143053-d3edf31b6320
