@@ -1,10 +1,11 @@
 package iptables
 
 import (
-	"fmt"
+	"context"
 	"log"
 	"strings"
 
+	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	vaultapi "github.com/hashicorp/vault/api"
 )
 
@@ -26,19 +27,17 @@ type Config struct {
 }
 
 // Client configures with Config.
-func (c *Config) Client() (*Client, error) {
+func (c *Config) Client(ctx context.Context) (*Client, diag.Diagnostics) {
 	var client *Client
 	var err error
 	if !c.vaultEnable {
-		client, err = NewClient(c.firewallIP, c.firewallPortAPI, c.allowedIPs, c.https, c.insecure,
-			c.logname, c.login, c.password, c.ipv6Enable, c.noAddDefaultDrop)
+		client, err = NewClient(ctx, c, c.login, c.password)
 	} else {
 		login, password := getloginVault(c.vaultPath, c.firewallIP, c.vaultKey)
-		client, err = NewClient(c.firewallIP, c.firewallPortAPI, c.allowedIPs, c.https, c.insecure,
-			c.logname, login, password, c.ipv6Enable, c.noAddDefaultDrop)
+		client, err = NewClient(ctx, c, login, password)
 	}
 	if err != nil {
-		return nil, fmt.Errorf("setting up firewall client %s failed", err)
+		return nil, diag.FromErr(err)
 	}
 
 	log.Printf("[INFO] Firewall client configured for server %s", c.firewallIP)
