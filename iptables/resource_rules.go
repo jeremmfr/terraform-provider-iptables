@@ -330,30 +330,36 @@ func resourceRulesDelete(ctx context.Context, d *schema.ResourceData, m interfac
 }
 
 func rulesReadOnCIDR(ctx context.Context, onCIDRList []interface{}, d *schema.ResourceData, m interface{}) error {
+	ingress := d.Get("ingress").(*schema.Set).List()
+	if d.HasChange("ingress") {
+		oldIngress, _ := d.GetChange("ingress")
+		ingress = oldIngress.(*schema.Set).List()
+	}
+	egress := d.Get("egress").(*schema.Set).List()
+	if d.HasChange("egress") {
+		oldEgress, _ := d.GetChange("egress")
+		egress = oldEgress.(*schema.Set).List()
+	}
 	for _, cidr := range onCIDRList {
-		if d.HasChange("ingress") {
-			oldIngress, _ := d.GetChange("ingress")
-			err := gressListCommand(ctx, cidr.(string), oldIngress.(*schema.Set).List(), wayIngress, httpGet, d, m, false)
-			if err != nil {
-				return err
-			}
-		} else {
-			err := gressListCommand(ctx, cidr.(string), d.Get("ingress").(*schema.Set).List(), wayIngress, httpGet, d, m, false)
-			if err != nil {
-				return err
-			}
+		// ingress
+		ingressRead, err := gressListCommand(ctx, cidr.(string), ingress, wayIngress, httpGet, d, m, false)
+		if err != nil {
+			return err
 		}
-		if d.HasChange("egress") {
-			oldEgress, _ := d.GetChange("egress")
-			err := gressListCommand(ctx, cidr.(string), oldEgress.(*schema.Set).List(), wayEgress, httpGet, d, m, false)
-			if err != nil {
-				return err
-			}
-		} else {
-			err := gressListCommand(ctx, cidr.(string), d.Get("egress").(*schema.Set).List(), wayEgress, httpGet, d, m, false)
-			if err != nil {
-				return err
-			}
+		ingress = make([]interface{}, len(ingressRead))
+		copy(ingress, ingressRead)
+		if tfErr := d.Set("ingress", ingressRead); tfErr != nil {
+			panic(tfErr)
+		}
+		// egress
+		egressRead, err := gressListCommand(ctx, cidr.(string), egress, wayEgress, httpGet, d, m, false)
+		if err != nil {
+			return err
+		}
+		egress = make([]interface{}, len(egressRead))
+		copy(egress, egressRead)
+		if tfErr := d.Set("egress", egressRead); tfErr != nil {
+			panic(tfErr)
 		}
 	}
 
@@ -364,25 +370,25 @@ func rulesRemoveOnCIDR(ctx context.Context, onCIDRList []interface{}, d *schema.
 	for _, cidr := range onCIDRList {
 		if d.HasChange("ingress") {
 			oldIngress, _ := d.GetChange("ingress")
-			err := gressListCommand(ctx, cidr.(string), oldIngress.(*schema.Set).List(), wayIngress, httpDel, d, m, false)
-			if err != nil {
+			if _, err := gressListCommand(
+				ctx, cidr.(string), oldIngress.(*schema.Set).List(), wayIngress, httpDel, d, m, false); err != nil {
 				return err
 			}
 		} else {
-			err := gressListCommand(ctx, cidr.(string), d.Get("ingress").(*schema.Set).List(), wayIngress, httpDel, d, m, false)
-			if err != nil {
+			if _, err := gressListCommand(
+				ctx, cidr.(string), d.Get("ingress").(*schema.Set).List(), wayIngress, httpDel, d, m, false); err != nil {
 				return err
 			}
 		}
 		if d.HasChange("egress") {
 			oldEgress, _ := d.GetChange("egress")
-			err := gressListCommand(ctx, cidr.(string), oldEgress.(*schema.Set).List(), wayEgress, httpDel, d, m, false)
-			if err != nil {
+			if _, err := gressListCommand(
+				ctx, cidr.(string), oldEgress.(*schema.Set).List(), wayEgress, httpDel, d, m, false); err != nil {
 				return err
 			}
 		} else {
-			err := gressListCommand(ctx, cidr.(string), d.Get("egress").(*schema.Set).List(), wayEgress, httpDel, d, m, false)
-			if err != nil {
+			if _, err := gressListCommand(
+				ctx, cidr.(string), d.Get("egress").(*schema.Set).List(), wayEgress, httpDel, d, m, false); err != nil {
 				return err
 			}
 		}
@@ -408,17 +414,17 @@ func rulesAddOncidr(ctx context.Context, onCIDRList []interface{}, d *schema.Res
 			//			computation of expanded deleted gress list
 			oldIngressSetExpandedRemove := computeOutSlicesOfMap(oldIngressSetDiffExpanded, newIngressSetDiffExpanded)
 
-			err = gressListCommand(ctx, cidr.(string), oldIngressSetExpandedRemove, wayIngress, httpDel, d, m, true)
-			if err != nil {
+			if _, err := gressListCommand(
+				ctx, cidr.(string), oldIngressSetExpandedRemove, wayIngress, httpDel, d, m, true); err != nil {
 				return err
 			}
-			err := gressListCommand(ctx, cidr.(string), newIngress.(*schema.Set).List(), wayIngress, httpPut, d, m, false)
-			if err != nil {
+			if _, err := gressListCommand(
+				ctx, cidr.(string), newIngress.(*schema.Set).List(), wayIngress, httpPut, d, m, false); err != nil {
 				return err
 			}
 		} else {
-			err := gressListCommand(ctx, cidr.(string), d.Get("ingress").(*schema.Set).List(), wayIngress, httpPut, d, m, false)
-			if err != nil {
+			if _, err := gressListCommand(
+				ctx, cidr.(string), d.Get("ingress").(*schema.Set).List(), wayIngress, httpPut, d, m, false); err != nil {
 				return err
 			}
 		}
@@ -433,17 +439,17 @@ func rulesAddOncidr(ctx context.Context, onCIDRList []interface{}, d *schema.Res
 			//			computation of expanded deleted gress list
 			oldEgressSetExpandedRemove := computeOutSlicesOfMap(oldEgressSetDiffExpanded, newEgressSetDiffExpanded)
 
-			err := gressListCommand(ctx, cidr.(string), oldEgressSetExpandedRemove, wayEgress, httpDel, d, m, true)
-			if err != nil {
+			if _, err := gressListCommand(
+				ctx, cidr.(string), oldEgressSetExpandedRemove, wayEgress, httpDel, d, m, true); err != nil {
 				return err
 			}
-			err = gressListCommand(ctx, cidr.(string), newEgress.(*schema.Set).List(), wayEgress, httpPut, d, m, false)
-			if err != nil {
+			if _, err := gressListCommand(
+				ctx, cidr.(string), newEgress.(*schema.Set).List(), wayEgress, httpPut, d, m, false); err != nil {
 				return err
 			}
 		} else {
-			err := gressListCommand(ctx, cidr.(string), d.Get("egress").(*schema.Set).List(), wayEgress, httpPut, d, m, false)
-			if err != nil {
+			if _, err := gressListCommand(
+				ctx, cidr.(string), d.Get("egress").(*schema.Set).List(), wayEgress, httpPut, d, m, false); err != nil {
 				return err
 			}
 		}
@@ -460,13 +466,13 @@ func gressListCommand(
 	d *schema.ResourceData,
 	m interface{},
 	cidrExpanded bool,
-) error {
+) ([]interface{}, error) {
 	switch method {
 	case httpGet:
 		if cidrExpanded {
-			return fmt.Errorf("internal error : gressListCommand Get with cidrExpanded")
+			return nil, fmt.Errorf("internal error : gressListCommand Get with cidrExpanded")
 		}
-		var saves []map[string]interface{}
+		var saves []interface{}
 		for _, gressElement := range gressList {
 			gressOK := true
 			gressOKnoPos := false
@@ -475,7 +481,7 @@ func gressListCommand(
 				err := gressCmd(ctx, onCIDR, gressExpandElement, way, httpGet, d, m)
 				if err != nil {
 					if !strings.Contains(err.Error(), noExists) {
-						return err
+						return nil, err
 					}
 					gressOK = false
 					if err.Error() == noExistsNoPosErr {
@@ -484,34 +490,21 @@ func gressListCommand(
 				}
 			}
 			if gressOK {
-				saves = append(saves, gressElement.(map[string]interface{}))
+				saves = append(saves, gressElement)
 			}
 			if gressOKnoPos {
-				gressElementNew := gressElement.(map[string]interface{})
-				gressElementNew["position"] = "?"
-				saves = append(saves, gressElementNew)
-			}
-		}
-		switch way {
-		case wayIngress:
-			tfErr := d.Set("ingress", saves)
-			if tfErr != nil {
-				panic(tfErr)
-			}
-		case wayEgress:
-			tfErr := d.Set("egress", saves)
-			if tfErr != nil {
-				panic(tfErr)
+				gressElement.(map[string]interface{})["position"] = "?"
+				saves = append(saves, gressElement)
 			}
 		}
 
-		return nil
+		return saves, nil
 	case httpDel:
 		if cidrExpanded {
 			for _, gressElement := range gressList {
 				err := gressCmd(ctx, onCIDR, gressElement, way, httpDel, d, m)
 				if err != nil {
-					return err
+					return nil, err
 				}
 			}
 		} else {
@@ -520,23 +513,23 @@ func gressListCommand(
 				for _, gressExpandElement := range gressExpand {
 					err := gressCmd(ctx, onCIDR, gressExpandElement, way, httpDel, d, m)
 					if err != nil {
-						return err
+						return nil, err
 					}
 				}
 			}
 		}
 
-		return nil
+		return nil, nil
 	case httpPut:
 		if cidrExpanded {
 			for _, gressElement := range gressList {
 				err := checkCIDRBlocksInMap(gressElement.(map[string]interface{}), ipv4ver)
 				if err != nil {
-					return err
+					return nil, err
 				}
 				err = gressCmd(ctx, onCIDR, gressElement, way, httpPut, d, m)
 				if err != nil {
-					return err
+					return nil, err
 				}
 			}
 		} else {
@@ -545,20 +538,20 @@ func gressListCommand(
 				for _, gressExpandElement := range gressExpand {
 					err := checkCIDRBlocksInMap(gressExpandElement.(map[string]interface{}), ipv4ver)
 					if err != nil {
-						return err
+						return nil, err
 					}
 					err = gressCmd(ctx, onCIDR, gressExpandElement, way, httpPut, d, m)
 					if err != nil {
-						return err
+						return nil, err
 					}
 				}
 			}
 		}
 
-		return nil
+		return nil, nil
 	}
 
-	return fmt.Errorf("internal error : unknown method for gressListCommand")
+	return nil, fmt.Errorf("internal error : unknown method for gressListCommand")
 }
 
 func gressCmd(
