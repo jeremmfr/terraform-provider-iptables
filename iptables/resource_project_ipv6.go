@@ -340,8 +340,9 @@ func resourceProjectIPv6Delete(ctx context.Context, d *schema.ResourceData, m in
 	return nil
 }
 
-func cidrForProjectV6(ctx context.Context,
-	cidr string, position int, method string, d *schema.ResourceData, m interface{}) (bool, error) {
+func cidrForProjectV6(
+	ctx context.Context, cidr string, position int, method string, d *schema.ResourceData, m interface{},
+) (bool, error) {
 	routerChain := "router_chain"
 	if position != 0 {
 		routerChain = strings.Join([]string{"router_chain_pos", strconv.Itoa(absolute(d.Get("position").(int)))}, "")

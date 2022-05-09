@@ -401,8 +401,15 @@ func natAddOnCIDR(ctx context.Context, onCIDRList []interface{}, d *schema.Resou
 	return nil
 }
 
-func natListCommand(ctx context.Context, onCIDR string, natList []interface{}, way string, method string,
-	d *schema.ResourceData, m interface{}, cidrExpanded bool) error {
+func natListCommand(
+	ctx context.Context,
+	onCIDR string,
+	natList []interface{},
+	way, method string,
+	d *schema.ResourceData,
+	m interface{},
+	cidrExpanded bool,
+) error {
 	switch method {
 	case httpGet:
 		if cidrExpanded {

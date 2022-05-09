@@ -457,8 +457,15 @@ func rulesAddOnCIDRV6(ctx context.Context, onCIDRList []interface{}, d *schema.R
 	return nil
 }
 
-func gressListCommandV6(ctx context.Context, onCIDR string, gressList []interface{}, way string, method string,
-	d *schema.ResourceData, m interface{}, cidrExpanded bool) error {
+func gressListCommandV6(
+	ctx context.Context,
+	onCIDR string,
+	gressList []interface{},
+	way, method string,
+	d *schema.ResourceData,
+	m interface{},
+	cidrExpanded bool,
+) error {
 	switch method {
 	case httpGet:
 		if cidrExpanded {
@@ -559,8 +566,14 @@ func gressListCommandV6(ctx context.Context, onCIDR string, gressList []interfac
 	return fmt.Errorf("internal error : unknown method for gressListCommand")
 }
 
-func gressCmdV6(ctx context.Context, onCIDR string, gress interface{}, way string, method string,
-	d *schema.ResourceData, m interface{}) error {
+func gressCmdV6(
+	ctx context.Context,
+	onCIDR string,
+	gress interface{},
+	way, method string,
+	d *schema.ResourceData,
+	m interface{},
+) error {
 	client := m.(*Client)
 	if !client.IPv6 {
 		return fmt.Errorf("ipv6 not enable on provider")

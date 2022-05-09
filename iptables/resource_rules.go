@@ -452,8 +452,15 @@ func rulesAddOncidr(ctx context.Context, onCIDRList []interface{}, d *schema.Res
 	return nil
 }
 
-func gressListCommand(ctx context.Context, onCIDR string, gressList []interface{}, way string, method string,
-	d *schema.ResourceData, m interface{}, cidrExpanded bool) error {
+func gressListCommand(
+	ctx context.Context,
+	onCIDR string,
+	gressList []interface{},
+	way, method string,
+	d *schema.ResourceData,
+	m interface{},
+	cidrExpanded bool,
+) error {
 	switch method {
 	case httpGet:
 		if cidrExpanded {
@@ -554,8 +561,14 @@ func gressListCommand(ctx context.Context, onCIDR string, gressList []interface{
 	return fmt.Errorf("internal error : unknown method for gressListCommand")
 }
 
-func gressCmd(ctx context.Context, onCIDR string, gress interface{}, way string, method string,
-	d *schema.ResourceData, m interface{}) error {
+func gressCmd(
+	ctx context.Context,
+	onCIDR string,
+	gress interface{},
+	way, method string,
+	d *schema.ResourceData,
+	m interface{},
+) error {
 	client := m.(*Client)
 	var dstOk string
 	var srcOk string
