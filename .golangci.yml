@@ -29,6 +29,9 @@ linters-settings:
   gocognit:
     # minimal code complexity to report, 30 by default
     min-complexity: 160
+  gofumpt:
+    # Choose whether to use the extra rules.
+    extra-rules: true
 issues:
   exclude-rules:
     - text: "TLS InsecureSkipVerify set true"

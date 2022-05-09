@@ -22,7 +22,7 @@ const (
 	protocolIntICMP         = 1
 )
 
-func computeRemove(from []interface{}, to []interface{}) []interface{} {
+func computeRemove(from, to []interface{}) []interface{} {
 	remove := make([]interface{}, 0)
 	for _, u := range from {
 		found := false
@@ -128,7 +128,7 @@ func ifaceStateFunc(v interface{}) string {
 	}
 }
 
-func computeOutSlicesOfMap(from []interface{}, to []interface{}) []interface{} {
+func computeOutSlicesOfMap(from, to []interface{}) []interface{} {
 	remove := make([]interface{}, 0)
 	for _, u := range from {
 		found := false
@@ -176,7 +176,7 @@ func checkCIDRBlocksInMap(cidrSet map[string]interface{}, vers string) error {
 	return err
 }
 
-func checkCIDRBlocksString(cidr string, vers string) error {
+func checkCIDRBlocksString(cidr, vers string) error {
 	var err error
 	switch vers {
 	case ipv4ver:
@@ -196,7 +196,7 @@ func checkCIDRBlocksString(cidr string, vers string) error {
 	return err
 }
 
-func checkCIDRNetworkOrHost(nethost string, vers string) error {
+func checkCIDRNetworkOrHost(nethost, vers string) error {
 	network := nethost
 	if !strings.Contains(network, "/") {
 		switch vers {

@@ -54,7 +54,7 @@ type Rule struct {
 }
 
 // NewClient configure.
-func NewClient(ctx context.Context, c *Config, login string, password string) (*Client, error) {
+func NewClient(ctx context.Context, c *Config, login, password string) (*Client, error) {
 	client := &Client{
 		FirewallIP: c.firewallIP,
 		Port:       c.firewallPortAPI,
@@ -272,7 +272,7 @@ func NewClient(ctx context.Context, c *Config, login string, password string) (*
 	return client, nil
 }
 
-func (client *Client) newRequest(ctx context.Context, method string, uriString string) (*http.Request, error) {
+func (client *Client) newRequest(ctx context.Context, method, uriString string) (*http.Request, error) {
 	IP := client.FirewallIP
 	port := strconv.Itoa(client.Port)
 
@@ -508,7 +508,7 @@ func (client *Client) rawAPI(ctx context.Context, version string, rule Rule, met
 	return false, errors.New(string(body))
 }
 
-func (client *Client) chainAPI(ctx context.Context, version string, chain string, method string) (bool, error) {
+func (client *Client) chainAPI(ctx context.Context, version, chain, method string) (bool, error) {
 	var uriString []string
 	if version == "v4" {
 		uriString = append(uriString, "/chain/filter/")
@@ -594,7 +594,7 @@ func (client *Client) save(ctx context.Context, version string) error {
 	return nil
 }
 
-func (client *Client) chainAPIV4(ctx context.Context, chain string, method string) (bool, error) {
+func (client *Client) chainAPIV4(ctx context.Context, chain, method string) (bool, error) {
 	return client.chainAPI(ctx, "v4", chain, method)
 }
 
@@ -614,7 +614,7 @@ func (client *Client) saveV4(ctx context.Context) error {
 	return client.save(ctx, "v4")
 }
 
-func (client *Client) chainAPIV6(ctx context.Context, chain string, method string) (bool, error) {
+func (client *Client) chainAPIV6(ctx context.Context, chain, method string) (bool, error) {
 	return client.chainAPI(ctx, "v6", chain, method)
 }
 
