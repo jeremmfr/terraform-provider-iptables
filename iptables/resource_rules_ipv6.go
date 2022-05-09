@@ -317,6 +317,7 @@ func resourceRulesIPv6Delete(ctx context.Context, d *schema.ResourceData, m inte
 }
 
 func rulesReadOnCIDRV6(ctx context.Context, onCIDRList []interface{}, d *schema.ResourceData, m interface{}) error {
+	project := d.Get("project").(string)
 	ingress := d.Get("ingress").(*schema.Set).List()
 	if d.HasChange("ingress") {
 		oldIngress, _ := d.GetChange("ingress")
@@ -329,7 +330,7 @@ func rulesReadOnCIDRV6(ctx context.Context, onCIDRList []interface{}, d *schema.
 	}
 	for _, cidr := range onCIDRList {
 		// ingress
-		ingressRead, err := gressListCommandV6(ctx, cidr.(string), ingress, wayIngress, httpGet, d, m, false)
+		ingressRead, err := gressListCommandV6(ctx, cidr.(string), ingress, wayIngress, httpGet, project, m, false)
 		if err != nil {
 			return err
 		}
@@ -339,7 +340,7 @@ func rulesReadOnCIDRV6(ctx context.Context, onCIDRList []interface{}, d *schema.
 			panic(tfErr)
 		}
 		// egress
-		egressRead, err := gressListCommandV6(ctx, cidr.(string), egress, wayEgress, httpGet, d, m, false)
+		egressRead, err := gressListCommandV6(ctx, cidr.(string), egress, wayEgress, httpGet, project, m, false)
 		if err != nil {
 			return err
 		}
@@ -354,28 +355,29 @@ func rulesReadOnCIDRV6(ctx context.Context, onCIDRList []interface{}, d *schema.
 }
 
 func rulesRemoveOnCIDRV6(ctx context.Context, onCIDRList []interface{}, d *schema.ResourceData, m interface{}) error {
+	project := d.Get("project").(string)
 	for _, cidr := range onCIDRList {
 		if d.HasChange("ingress") {
 			oldIngress, _ := d.GetChange("ingress")
 			if _, err := gressListCommandV6(
-				ctx, cidr.(string), oldIngress.(*schema.Set).List(), wayIngress, httpDel, d, m, false); err != nil {
+				ctx, cidr.(string), oldIngress.(*schema.Set).List(), wayIngress, httpDel, project, m, false); err != nil {
 				return err
 			}
 		} else {
 			if _, err := gressListCommandV6(
-				ctx, cidr.(string), d.Get("ingress").(*schema.Set).List(), wayIngress, httpDel, d, m, false); err != nil {
+				ctx, cidr.(string), d.Get("ingress").(*schema.Set).List(), wayIngress, httpDel, project, m, false); err != nil {
 				return err
 			}
 		}
 		if d.HasChange("egress") {
 			oldEgress, _ := d.GetChange("egress")
 			if _, err := gressListCommandV6(
-				ctx, cidr.(string), oldEgress.(*schema.Set).List(), wayEgress, httpDel, d, m, false); err != nil {
+				ctx, cidr.(string), oldEgress.(*schema.Set).List(), wayEgress, httpDel, project, m, false); err != nil {
 				return err
 			}
 		} else {
 			if _, err := gressListCommandV6(
-				ctx, cidr.(string), d.Get("egress").(*schema.Set).List(), wayEgress, httpDel, d, m, false); err != nil {
+				ctx, cidr.(string), d.Get("egress").(*schema.Set).List(), wayEgress, httpDel, project, m, false); err != nil {
 				return err
 			}
 		}
@@ -385,6 +387,7 @@ func rulesRemoveOnCIDRV6(ctx context.Context, onCIDRList []interface{}, d *schem
 }
 
 func rulesAddOnCIDRV6(ctx context.Context, onCIDRList []interface{}, d *schema.ResourceData, m interface{}) error {
+	project := d.Get("project").(string)
 	for _, cidr := range onCIDRList {
 		if err := checkCIDRBlocksString(cidr.(string), ipv6ver); err != nil {
 			return err
@@ -401,16 +404,16 @@ func rulesAddOnCIDRV6(ctx context.Context, onCIDRList []interface{}, d *schema.R
 			oldIngressSetExpandedRemove := computeOutSlicesOfMap(oldIngressSetDiffExpanded, newIngressSetDiffExpanded)
 
 			if _, err := gressListCommandV6(
-				ctx, cidr.(string), oldIngressSetExpandedRemove, wayIngress, httpDel, d, m, true); err != nil {
+				ctx, cidr.(string), oldIngressSetExpandedRemove, wayIngress, httpDel, project, m, true); err != nil {
 				return err
 			}
 			if _, err := gressListCommandV6(
-				ctx, cidr.(string), newIngress.(*schema.Set).List(), wayIngress, httpPut, d, m, false); err != nil {
+				ctx, cidr.(string), newIngress.(*schema.Set).List(), wayIngress, httpPut, project, m, false); err != nil {
 				return err
 			}
 		} else {
 			if _, err := gressListCommandV6(
-				ctx, cidr.(string), d.Get("ingress").(*schema.Set).List(), wayIngress, httpPut, d, m, false); err != nil {
+				ctx, cidr.(string), d.Get("ingress").(*schema.Set).List(), wayIngress, httpPut, project, m, false); err != nil {
 				return err
 			}
 		}
@@ -426,16 +429,16 @@ func rulesAddOnCIDRV6(ctx context.Context, onCIDRList []interface{}, d *schema.R
 			oldEgressSetExpandedRemove := computeOutSlicesOfMap(oldEgressSetDiffExpanded, newEgressSetDiffExpanded)
 
 			if _, err := gressListCommandV6(
-				ctx, cidr.(string), oldEgressSetExpandedRemove, wayEgress, httpDel, d, m, true); err != nil {
+				ctx, cidr.(string), oldEgressSetExpandedRemove, wayEgress, httpDel, project, m, true); err != nil {
 				return err
 			}
 			if _, err := gressListCommandV6(
-				ctx, cidr.(string), newEgress.(*schema.Set).List(), wayEgress, httpPut, d, m, false); err != nil {
+				ctx, cidr.(string), newEgress.(*schema.Set).List(), wayEgress, httpPut, project, m, false); err != nil {
 				return err
 			}
 		} else {
 			if _, err := gressListCommandV6(
-				ctx, cidr.(string), d.Get("egress").(*schema.Set).List(), wayEgress, httpPut, d, m, false); err != nil {
+				ctx, cidr.(string), d.Get("egress").(*schema.Set).List(), wayEgress, httpPut, project, m, false); err != nil {
 				return err
 			}
 		}
@@ -448,8 +451,7 @@ func gressListCommandV6(
 	ctx context.Context,
 	onCIDR string,
 	gressList []interface{},
-	way, method string,
-	d *schema.ResourceData,
+	way, method, project string,
 	m interface{},
 	cidrExpanded bool,
 ) ([]interface{}, error) {
@@ -464,7 +466,7 @@ func gressListCommandV6(
 			gressOKnoPos := false
 			gressExpand := expandCIDRInGress(gressElement, ipv6ver)
 			for _, gressExpandElement := range gressExpand {
-				if err := gressCmdV6(ctx, onCIDR, gressExpandElement, way, httpGet, d, m); err != nil {
+				if err := gressCmdV6(ctx, onCIDR, gressExpandElement, way, httpGet, project, m); err != nil {
 					if !strings.Contains(err.Error(), noExists) {
 						return nil, err
 					}
@@ -487,7 +489,7 @@ func gressListCommandV6(
 	case httpDel:
 		if cidrExpanded {
 			for _, gressElement := range gressList {
-				if err := gressCmdV6(ctx, onCIDR, gressElement, way, httpDel, d, m); err != nil {
+				if err := gressCmdV6(ctx, onCIDR, gressElement, way, httpDel, project, m); err != nil {
 					return nil, err
 				}
 			}
@@ -495,7 +497,7 @@ func gressListCommandV6(
 			for _, gressElement := range gressList {
 				gressExpand := expandCIDRInGress(gressElement, ipv6ver)
 				for _, gressExpandElement := range gressExpand {
-					if err := gressCmdV6(ctx, onCIDR, gressExpandElement, way, httpDel, d, m); err != nil {
+					if err := gressCmdV6(ctx, onCIDR, gressExpandElement, way, httpDel, project, m); err != nil {
 						return nil, err
 					}
 				}
@@ -509,7 +511,7 @@ func gressListCommandV6(
 				if err := checkCIDRBlocksInMap(gressElement.(map[string]interface{}), ipv6ver); err != nil {
 					return nil, err
 				}
-				if err := gressCmdV6(ctx, onCIDR, gressElement, way, httpPut, d, m); err != nil {
+				if err := gressCmdV6(ctx, onCIDR, gressElement, way, httpPut, project, m); err != nil {
 					return nil, err
 				}
 			}
@@ -520,7 +522,7 @@ func gressListCommandV6(
 					if err := checkCIDRBlocksInMap(gressExpandElement.(map[string]interface{}), ipv6ver); err != nil {
 						return nil, err
 					}
-					if err := gressCmdV6(ctx, onCIDR, gressExpandElement, way, httpPut, d, m); err != nil {
+					if err := gressCmdV6(ctx, onCIDR, gressExpandElement, way, httpPut, project, m); err != nil {
 						return nil, err
 					}
 				}
@@ -534,12 +536,7 @@ func gressListCommandV6(
 }
 
 func gressCmdV6(
-	ctx context.Context,
-	onCIDR string,
-	gress interface{},
-	way, method string,
-	d *schema.ResourceData,
-	m interface{},
+	ctx context.Context, onCIDR string, gress interface{}, way, method, project string, m interface{},
 ) error {
 	client := m.(*Client)
 	if !client.IPv6 {
@@ -612,7 +609,7 @@ func gressCmdV6(
 		State:     ma["state"].(string),
 		Icmptype:  ma["icmptype"].(string),
 		Fragment:  ma["fragment"].(bool),
-		Chain:     d.Get("project").(string),
+		Chain:     project,
 		Proto:     ma["protocol"].(string),
 		IfaceIn:   ma["iface_in"].(string),
 		IfaceOut:  ma["iface_out"].(string),
@@ -628,7 +625,7 @@ func gressCmdV6(
 		State:     ma["state"].(string),
 		Icmptype:  ma["icmptype"].(string),
 		Fragment:  ma["fragment"].(bool),
-		Chain:     d.Get("project").(string),
+		Chain:     project,
 		Proto:     ma["protocol"].(string),
 		IfaceIn:   ma["iface_in"].(string),
 		IfaceOut:  ma["iface_out"].(string),
