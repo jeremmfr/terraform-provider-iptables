@@ -260,30 +260,36 @@ func natHashV6(v interface{}) int {
 }
 
 func natReadOnCIDRV6(ctx context.Context, onCIDRList []interface{}, d *schema.ResourceData, m interface{}) error {
+	snat := d.Get("snat").(*schema.Set).List()
+	if d.HasChange("snat") {
+		oldSnat, _ := d.GetChange("snat")
+		snat = oldSnat.(*schema.Set).List()
+	}
+	dnat := d.Get("dnat").(*schema.Set).List()
+	if d.HasChange("dnat") {
+		oldDnat, _ := d.GetChange("dnat")
+		dnat = oldDnat.(*schema.Set).List()
+	}
 	for _, cidr := range onCIDRList {
-		if d.HasChange("snat") {
-			oldSnat, _ := d.GetChange("snat")
-			err := natListCommandV6(ctx, cidr.(string), oldSnat.(*schema.Set).List(), strSnat, httpGet, d, m, false)
-			if err != nil {
-				return err
-			}
-		} else {
-			err := natListCommandV6(ctx, cidr.(string), d.Get("snat").(*schema.Set).List(), strSnat, httpGet, d, m, false)
-			if err != nil {
-				return err
-			}
+		// snat
+		snatRead, err := natListCommandV6(ctx, cidr.(string), snat, strSnat, httpGet, m, false)
+		if err != nil {
+			return err
 		}
-		if d.HasChange("dnat") {
-			oldDnat, _ := d.GetChange("dnat")
-			err := natListCommandV6(ctx, cidr.(string), oldDnat.(*schema.Set).List(), strDnat, httpGet, d, m, false)
-			if err != nil {
-				return err
-			}
-		} else {
-			err := natListCommandV6(ctx, cidr.(string), d.Get("dnat").(*schema.Set).List(), strDnat, httpGet, d, m, false)
-			if err != nil {
-				return err
-			}
+		snat = make([]interface{}, len(snatRead))
+		copy(snat, snatRead)
+		if tfErr := d.Set("snat", snatRead); tfErr != nil {
+			panic(tfErr)
+		}
+		// dnat
+		dnatRead, err := natListCommandV6(ctx, cidr.(string), dnat, strDnat, httpGet, m, false)
+		if err != nil {
+			return err
+		}
+		dnat = make([]interface{}, len(dnatRead))
+		copy(dnat, dnatRead)
+		if tfErr := d.Set("dnat", dnatRead); tfErr != nil {
+			panic(tfErr)
 		}
 	}
 
@@ -294,25 +300,25 @@ func natRemoveOnCIDRV6(ctx context.Context, onCIDRList []interface{}, d *schema.
 	for _, cidr := range onCIDRList {
 		if d.HasChange("snat") {
 			oldSnat, _ := d.GetChange("snat")
-			err := natListCommandV6(ctx, cidr.(string), oldSnat.(*schema.Set).List(), strSnat, httpDel, d, m, false)
-			if err != nil {
+			if _, err := natListCommandV6(
+				ctx, cidr.(string), oldSnat.(*schema.Set).List(), strSnat, httpDel, m, false); err != nil {
 				return err
 			}
 		} else {
-			err := natListCommandV6(ctx, cidr.(string), d.Get("snat").(*schema.Set).List(), strSnat, httpDel, d, m, false)
-			if err != nil {
+			if _, err := natListCommandV6(
+				ctx, cidr.(string), d.Get("snat").(*schema.Set).List(), strSnat, httpDel, m, false); err != nil {
 				return err
 			}
 		}
 		if d.HasChange("dnat") {
 			oldDnat, _ := d.GetChange("dnat")
-			err := natListCommandV6(ctx, cidr.(string), oldDnat.(*schema.Set).List(), strDnat, httpDel, d, m, false)
-			if err != nil {
+			if _, err := natListCommandV6(
+				ctx, cidr.(string), oldDnat.(*schema.Set).List(), strDnat, httpDel, m, false); err != nil {
 				return err
 			}
 		} else {
-			err := natListCommandV6(ctx, cidr.(string), d.Get("dnat").(*schema.Set).List(), strDnat, httpDel, d, m, false)
-			if err != nil {
+			if _, err := natListCommandV6(
+				ctx, cidr.(string), d.Get("dnat").(*schema.Set).List(), strDnat, httpDel, m, false); err != nil {
 				return err
 			}
 		}
@@ -340,12 +346,12 @@ func natAddOnCIDRV6(ctx context.Context, onCIDRList []interface{}, d *schema.Res
 			if err != nil {
 				return err
 			}
-			err = natListCommandV6(ctx, cidr.(string), oldSnatSetExpandedRemove, strSnat, httpDel, d, m, true)
-			if err != nil {
+			if _, err := natListCommandV6(
+				ctx, cidr.(string), oldSnatSetExpandedRemove, strSnat, httpDel, m, true); err != nil {
 				return err
 			}
-			err = natListCommandV6(ctx, cidr.(string), newSnat.(*schema.Set).List(), strSnat, httpPut, d, m, false)
-			if err != nil {
+			if _, err := natListCommandV6(
+				ctx, cidr.(string), newSnat.(*schema.Set).List(), strSnat, httpPut, m, false); err != nil {
 				return err
 			}
 		} else {
@@ -353,8 +359,8 @@ func natAddOnCIDRV6(ctx context.Context, onCIDRList []interface{}, d *schema.Res
 			if err != nil {
 				return err
 			}
-			err = natListCommandV6(ctx, cidr.(string), d.Get("snat").(*schema.Set).List(), strSnat, httpPut, d, m, false)
-			if err != nil {
+			if _, err := natListCommandV6(
+				ctx, cidr.(string), d.Get("snat").(*schema.Set).List(), strSnat, httpPut, m, false); err != nil {
 				return err
 			}
 		}
@@ -371,12 +377,12 @@ func natAddOnCIDRV6(ctx context.Context, onCIDRList []interface{}, d *schema.Res
 			if err != nil {
 				return err
 			}
-			err = natListCommandV6(ctx, cidr.(string), oldDnatSetExpandedRemove, strDnat, httpDel, d, m, true)
-			if err != nil {
+			if _, err := natListCommandV6(
+				ctx, cidr.(string), oldDnatSetExpandedRemove, strDnat, httpDel, m, true); err != nil {
 				return err
 			}
-			err = natListCommandV6(ctx, cidr.(string), newDnat.(*schema.Set).List(), strDnat, httpPut, d, m, false)
-			if err != nil {
+			if _, err := natListCommandV6(
+				ctx, cidr.(string), newDnat.(*schema.Set).List(), strDnat, httpPut, m, false); err != nil {
 				return err
 			}
 		} else {
@@ -384,8 +390,8 @@ func natAddOnCIDRV6(ctx context.Context, onCIDRList []interface{}, d *schema.Res
 			if err != nil {
 				return err
 			}
-			err = natListCommandV6(ctx, cidr.(string), d.Get("dnat").(*schema.Set).List(), strDnat, httpPut, d, m, false)
-			if err != nil {
+			if _, err := natListCommandV6(
+				ctx, cidr.(string), d.Get("dnat").(*schema.Set).List(), strDnat, httpPut, m, false); err != nil {
 				return err
 			}
 		}
@@ -399,16 +405,15 @@ func natListCommandV6(
 	onCIDR string,
 	natList []interface{},
 	way, method string,
-	d *schema.ResourceData,
 	m interface{},
 	cidrExpanded bool,
-) error {
+) ([]interface{}, error) {
 	switch method {
 	case httpGet:
 		if cidrExpanded {
-			return fmt.Errorf("internal error : natListCommand Get with cidrExpanded")
+			return nil, fmt.Errorf("internal error : natListCommand Get with cidrExpanded")
 		}
-		var saves []map[string]interface{}
+		var saves []interface{}
 		for _, natElement := range natList {
 			natOK := true
 			natOKnoPos := false
@@ -417,7 +422,7 @@ func natListCommandV6(
 				err := natCmdV6(ctx, onCIDR, natExpandedElement, httpGet, m)
 				if err != nil {
 					if !strings.Contains(err.Error(), noExists) {
-						return err
+						return nil, err
 					}
 					natOK = false
 					if err.Error() == noExistsNoPosErr {
@@ -426,34 +431,21 @@ func natListCommandV6(
 				}
 			}
 			if natOK {
-				saves = append(saves, natElement.(map[string]interface{}))
+				saves = append(saves, natElement)
 			}
 			if natOKnoPos {
-				natElementNew := natElement.(map[string]interface{})
-				natElementNew["position"] = "?"
-				saves = append(saves, natElementNew)
-			}
-		}
-		switch way {
-		case strSnat:
-			tfErr := d.Set("snat", saves)
-			if tfErr != nil {
-				panic(tfErr)
-			}
-		case strDnat:
-			tfErr := d.Set("dnat", saves)
-			if tfErr != nil {
-				panic(tfErr)
+				natElement.(map[string]interface{})["position"] = "?"
+				saves = append(saves, natElement)
 			}
 		}
 
-		return nil
+		return saves, nil
 	case httpDel:
 		if cidrExpanded {
 			for _, natElement := range natList {
 				err := natCmdV6(ctx, onCIDR, natElement, httpDel, m)
 				if err != nil {
-					return err
+					return nil, err
 				}
 			}
 		} else {
@@ -462,23 +454,23 @@ func natListCommandV6(
 				for _, natExpandedElement := range natExpanded {
 					err := natCmdV6(ctx, onCIDR, natExpandedElement, httpDel, m)
 					if err != nil {
-						return err
+						return nil, err
 					}
 				}
 			}
 		}
 
-		return nil
+		return nil, nil
 	case httpPut:
 		if cidrExpanded {
 			for _, natElement := range natList {
 				err := checkCIDRBlocksInMap(natElement.(map[string]interface{}), ipv6ver)
 				if err != nil {
-					return err
+					return nil, err
 				}
 				err = natCmdV6(ctx, onCIDR, natElement, httpPut, m)
 				if err != nil {
-					return err
+					return nil, err
 				}
 			}
 		} else {
@@ -487,20 +479,20 @@ func natListCommandV6(
 				for _, natExpandElement := range natExpand {
 					err := checkCIDRBlocksInMap(natExpandElement.(map[string]interface{}), ipv6ver)
 					if err != nil {
-						return err
+						return nil, err
 					}
 					err = natCmdV6(ctx, onCIDR, natExpandElement, httpPut, m)
 					if err != nil {
-						return err
+						return nil, err
 					}
 				}
 			}
 		}
 
-		return nil
+		return nil, nil
 	}
 
-	return fmt.Errorf("internal error : unknown method for natListCommand")
+	return nil, fmt.Errorf("internal error : unknown method for natListCommand")
 }
 
 func natCmdV6(ctx context.Context, onCIDR string, nat interface{}, method string, m interface{}) error {
