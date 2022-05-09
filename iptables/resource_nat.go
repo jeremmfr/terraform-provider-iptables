@@ -156,13 +156,11 @@ func resourceNatCreate(ctx context.Context, d *schema.ResourceData, m interface{
 func resourceNatRead(ctx context.Context, d *schema.ResourceData, m interface{}) diag.Diagnostics {
 	if d.HasChange("on_cidr_blocks") {
 		oldOnCIDR, _ := d.GetChange("on_cidr_blocks")
-		err := natReadOnCIDR(ctx, oldOnCIDR.(*schema.Set).List(), d, m)
-		if err != nil {
+		if err := natReadOnCIDR(ctx, oldOnCIDR.(*schema.Set).List(), d, m); err != nil {
 			return diag.FromErr(err)
 		}
 	} else {
-		err := natReadOnCIDR(ctx, d.Get("on_cidr_blocks").(*schema.Set).List(), d, m)
-		if err != nil {
+		if err := natReadOnCIDR(ctx, d.Get("on_cidr_blocks").(*schema.Set).List(), d, m); err != nil {
 			return diag.FromErr(err)
 		}
 	}
@@ -181,8 +179,7 @@ func resourceNatUpdate(ctx context.Context, d *schema.ResourceData, m interface{
 		}
 	}
 
-	err := checkNatPositionAndCIDRList(d)
-	if err != nil {
+	if err := checkNatPositionAndCIDRList(d); err != nil {
 		d.SetId("")
 
 		return diag.FromErr(err)
@@ -190,29 +187,25 @@ func resourceNatUpdate(ctx context.Context, d *schema.ResourceData, m interface{
 	if d.HasChange("on_cidr_blocks") {
 		oldOnCIDR, newOnCIDR := d.GetChange("on_cidr_blocks")
 		onCIDRRemove := computeRemove(oldOnCIDR.(*schema.Set).List(), newOnCIDR.(*schema.Set).List())
-		err = natRemoveOnCIDR(ctx, onCIDRRemove, d, m)
-		if err != nil {
+		if err := natRemoveOnCIDR(ctx, onCIDRRemove, d, m); err != nil {
 			d.SetId("")
 
 			return diag.FromErr(err)
 		}
-		err = natAddOnCIDR(ctx, d.Get("on_cidr_blocks").(*schema.Set).List(), d, m)
-		if err != nil {
+		if err := natAddOnCIDR(ctx, d.Get("on_cidr_blocks").(*schema.Set).List(), d, m); err != nil {
 			d.SetId("")
 
 			return diag.FromErr(err)
 		}
 	} else {
-		err = natAddOnCIDR(ctx, d.Get("on_cidr_blocks").(*schema.Set).List(), d, m)
-		if err != nil {
+		if err := natAddOnCIDR(ctx, d.Get("on_cidr_blocks").(*schema.Set).List(), d, m); err != nil {
 			d.SetId("")
 
 			return diag.FromErr(err)
 		}
 	}
 	client := m.(*Client)
-	err = client.saveV4(ctx)
-	if err != nil {
+	if err := client.saveV4(ctx); err != nil {
 		return diag.FromErr(fmt.Errorf("iptables save failed : %w", err))
 	}
 
@@ -220,15 +213,13 @@ func resourceNatUpdate(ctx context.Context, d *schema.ResourceData, m interface{
 }
 
 func resourceNatDelete(ctx context.Context, d *schema.ResourceData, m interface{}) diag.Diagnostics {
-	err := natRemoveOnCIDR(ctx, d.Get("on_cidr_blocks").(*schema.Set).List(), d, m)
-	if err != nil {
+	if err := natRemoveOnCIDR(ctx, d.Get("on_cidr_blocks").(*schema.Set).List(), d, m); err != nil {
 		d.SetId(d.Get("name").(string) + "!")
 
 		return diag.FromErr(err)
 	}
 	client := m.(*Client)
-	err = client.saveV4(ctx)
-	if err != nil {
+	if err := client.saveV4(ctx); err != nil {
 		return diag.FromErr(fmt.Errorf("iptables save failed : %w", err))
 	}
 
@@ -334,8 +325,7 @@ func natRemoveOnCIDR(ctx context.Context, onCIDRList []interface{}, d *schema.Re
 
 func natAddOnCIDR(ctx context.Context, onCIDRList []interface{}, d *schema.ResourceData, m interface{}) error {
 	for _, cidr := range onCIDRList {
-		err := checkCIDRBlocksString(cidr.(string), ipv4ver)
-		if err != nil {
+		if err := checkCIDRBlocksString(cidr.(string), ipv4ver); err != nil {
 			return err
 		}
 		if d.HasChange("snat") {
@@ -347,8 +337,7 @@ func natAddOnCIDR(ctx context.Context, onCIDRList []interface{}, d *schema.Resou
 			newSnatSetDiffExpanded := expandCIDRInNatList(newSnatSetDiff.List(), strSnat, ipv4ver)
 			oldSnatSetExpandedRemove := computeOutSlicesOfMap(oldSnatSetDiffExpanded, newSnatSetDiffExpanded)
 
-			err := checkNat(newSnat.(*schema.Set).List())
-			if err != nil {
+			if err := checkNat(newSnat.(*schema.Set).List()); err != nil {
 				return err
 			}
 			if _, err := natListCommand(
@@ -360,8 +349,7 @@ func natAddOnCIDR(ctx context.Context, onCIDRList []interface{}, d *schema.Resou
 				return err
 			}
 		} else {
-			err := checkNat(d.Get("snat").(*schema.Set).List())
-			if err != nil {
+			if err := checkNat(d.Get("snat").(*schema.Set).List()); err != nil {
 				return err
 			}
 			if _, err := natListCommand(
@@ -378,8 +366,7 @@ func natAddOnCIDR(ctx context.Context, onCIDRList []interface{}, d *schema.Resou
 			newDnatSetDiffExpand := expandCIDRInNatList(newDnatSetDiff.List(), strDnat, ipv4ver)
 			oldDnatSetExpandedRemove := computeOutSlicesOfMap(oldDnatSetDiffExpand, newDnatSetDiffExpand)
 
-			err := checkNat(newDnat.(*schema.Set).List())
-			if err != nil {
+			if err := checkNat(newDnat.(*schema.Set).List()); err != nil {
 				return err
 			}
 			if _, err := natListCommand(ctx, cidr.(string), oldDnatSetExpandedRemove, strDnat, httpDel, m, true); err != nil {
@@ -390,8 +377,7 @@ func natAddOnCIDR(ctx context.Context, onCIDRList []interface{}, d *schema.Resou
 				return err
 			}
 		} else {
-			err := checkNat(d.Get("dnat").(*schema.Set).List())
-			if err != nil {
+			if err := checkNat(d.Get("dnat").(*schema.Set).List()); err != nil {
 				return err
 			}
 			if _, err := natListCommand(
@@ -423,8 +409,7 @@ func natListCommand(
 			natOKnoPos := false
 			natExpanded := expandCIDRInNat(natElement, way, ipv4ver)
 			for _, natExpandedElement := range natExpanded {
-				err := natCmd(ctx, onCIDR, natExpandedElement, httpGet, m)
-				if err != nil {
+				if err := natCmd(ctx, onCIDR, natExpandedElement, httpGet, m); err != nil {
 					if !strings.Contains(err.Error(), noExists) {
 						return nil, err
 					}
@@ -447,8 +432,7 @@ func natListCommand(
 	case httpDel:
 		if cidrExpanded {
 			for _, natElement := range natList {
-				err := natCmd(ctx, onCIDR, natElement, httpDel, m)
-				if err != nil {
+				if err := natCmd(ctx, onCIDR, natElement, httpDel, m); err != nil {
 					return nil, err
 				}
 			}
@@ -456,8 +440,7 @@ func natListCommand(
 			for _, natElement := range natList {
 				natExpanded := expandCIDRInNat(natElement, way, ipv4ver)
 				for _, natExpandedElement := range natExpanded {
-					err := natCmd(ctx, onCIDR, natExpandedElement, httpDel, m)
-					if err != nil {
+					if err := natCmd(ctx, onCIDR, natExpandedElement, httpDel, m); err != nil {
 						return nil, err
 					}
 				}
@@ -468,12 +451,10 @@ func natListCommand(
 	case httpPut:
 		if cidrExpanded {
 			for _, natElement := range natList {
-				err := checkCIDRBlocksInMap(natElement.(map[string]interface{}), ipv4ver)
-				if err != nil {
+				if err := checkCIDRBlocksInMap(natElement.(map[string]interface{}), ipv4ver); err != nil {
 					return nil, err
 				}
-				err = natCmd(ctx, onCIDR, natElement, httpPut, m)
-				if err != nil {
+				if err := natCmd(ctx, onCIDR, natElement, httpPut, m); err != nil {
 					return nil, err
 				}
 			}
@@ -481,12 +462,10 @@ func natListCommand(
 			for _, natElement := range natList {
 				natExpand := expandCIDRInNat(natElement, way, ipv4ver)
 				for _, natExpandElement := range natExpand {
-					err := checkCIDRBlocksInMap(natExpandElement.(map[string]interface{}), ipv4ver)
-					if err != nil {
+					if err := checkCIDRBlocksInMap(natExpandElement.(map[string]interface{}), ipv4ver); err != nil {
 						return nil, err
 					}
-					err = natCmd(ctx, onCIDR, natExpandElement, httpPut, m)
-					if err != nil {
+					if err := natCmd(ctx, onCIDR, natExpandElement, httpPut, m); err != nil {
 						return nil, err
 					}
 				}

@@ -86,8 +86,7 @@ func resourceProjectIPv6Read(ctx context.Context, d *schema.ResourceData, m inte
 			return diag.FromErr(fmt.Errorf("read chain router_chain_pos %s failed : %w", routerChainName, err))
 		}
 		if !checkExists {
-			tfErr := d.Set("position", 0)
-			if tfErr != nil {
+			if tfErr := d.Set("position", 0); tfErr != nil {
 				panic(tfErr)
 			}
 		}
@@ -96,13 +95,11 @@ func resourceProjectIPv6Read(ctx context.Context, d *schema.ResourceData, m inte
 			return diag.FromErr(fmt.Errorf("read position %d in router_chain failed : %w", d.Get("position").(int), err))
 		}
 		if !routerChainPos {
-			tfErr := d.Set("position", absolute(d.Get("position").(int))*-1)
-			if tfErr != nil {
+			if tfErr := d.Set("position", absolute(d.Get("position").(int))*-1); tfErr != nil {
 				panic(tfErr)
 			}
 		} else {
-			tfErr := d.Set("position", absolute(d.Get("position").(int)))
-			if tfErr != nil {
+			if tfErr := d.Set("position", absolute(d.Get("position").(int))); tfErr != nil {
 				panic(tfErr)
 			}
 		}
@@ -115,8 +112,7 @@ func resourceProjectIPv6Read(ctx context.Context, d *schema.ResourceData, m inte
 			listCIDRSet = append(listCIDRSet, cidr.(string))
 		}
 	}
-	tfErr := d.Set("cidr_blocks", listCIDRSet)
-	if tfErr != nil {
+	if tfErr := d.Set("cidr_blocks", listCIDRSet); tfErr != nil {
 		panic(tfErr)
 	}
 	d.SetId(d.Get("name").(string) + "!")
@@ -138,19 +134,15 @@ func resourceProjectIPv6Update(ctx context.Context, d *schema.ResourceData, m in
 		oPos, nPos = d.GetChange("position")
 		if oPos.(int) != 0 {
 			for _, cidr := range d.Get("cidr_blocks").(*schema.Set).List() {
-				err := checkCIDRBlocksString(cidr.(string), ipv6ver)
-				if err != nil {
-					tfErr := d.Set("position", oPos.(int))
-					if tfErr != nil {
+				if err := checkCIDRBlocksString(cidr.(string), ipv6ver); err != nil {
+					if tfErr := d.Set("position", oPos.(int)); tfErr != nil {
 						panic(tfErr)
 					}
 
 					return diag.FromErr(err)
 				}
-				_, err = cidrForProjectV6(ctx, cidr.(string), 0, httpPut, d, m)
-				if err != nil {
-					tfErr := d.Set("position", oPos.(int))
-					if tfErr != nil {
+				if _, err := cidrForProjectV6(ctx, cidr.(string), 0, httpPut, d, m); err != nil {
+					if tfErr := d.Set("position", oPos.(int)); tfErr != nil {
 						panic(tfErr)
 					}
 
@@ -159,8 +151,7 @@ func resourceProjectIPv6Update(ctx context.Context, d *schema.ResourceData, m in
 			}
 			rulePosDel, err := insertPosrouterV6(ctx, absolute(oPos.(int)), httpDel, m)
 			if !rulePosDel || err != nil {
-				tfErr := d.Set("position", oPos.(int))
-				if tfErr != nil {
+				if tfErr := d.Set("position", oPos.(int)); tfErr != nil {
 					panic(tfErr)
 				}
 
@@ -169,15 +160,13 @@ func resourceProjectIPv6Update(ctx context.Context, d *schema.ResourceData, m in
 			routerChainName := strings.Join([]string{"router_chain_pos", strconv.Itoa(absolute(oPos.(int)))}, "")
 			routeChainDel, err := client.chainAPIV6(ctx, routerChainName, httpDel)
 			if !routeChainDel || err != nil {
-				tfErr := d.Set("position", oPos.(int))
-				if tfErr != nil {
+				if tfErr := d.Set("position", oPos.(int)); tfErr != nil {
 					panic(tfErr)
 				}
 
 				return diag.FromErr(fmt.Errorf("delete chain %s failed : %w", routerChainName, err))
 			}
-			tfErr := d.Set("position", 0)
-			if tfErr != nil {
+			if tfErr := d.Set("position", 0); tfErr != nil {
 				panic(tfErr)
 			}
 		}
@@ -185,16 +174,14 @@ func resourceProjectIPv6Update(ctx context.Context, d *schema.ResourceData, m in
 			routerChainName := strings.Join([]string{"router_chain_pos", strconv.Itoa(nPos.(int))}, "")
 			checkExists, err := client.chainAPIV6(ctx, routerChainName, httpGet)
 			if err != nil {
-				tfErr := d.Set("position", 0)
-				if tfErr != nil {
+				if tfErr := d.Set("position", 0); tfErr != nil {
 					panic(tfErr)
 				}
 
 				return diag.FromErr(fmt.Errorf("check if chain %s exist failed : %w", routerChainName, err))
 			}
 			if checkExists {
-				tfErr := d.Set("position", 0)
-				if tfErr != nil {
+				if tfErr := d.Set("position", 0); tfErr != nil {
 					panic(tfErr)
 				}
 
@@ -202,8 +189,7 @@ func resourceProjectIPv6Update(ctx context.Context, d *schema.ResourceData, m in
 			}
 			create, err := client.chainAPIV6(ctx, routerChainName, httpPut)
 			if !create || err != nil {
-				tfErr := d.Set("position", 0)
-				if tfErr != nil {
+				if tfErr := d.Set("position", 0); tfErr != nil {
 					panic(tfErr)
 				}
 
@@ -213,8 +199,7 @@ func resourceProjectIPv6Update(ctx context.Context, d *schema.ResourceData, m in
 			if !createPos || err != nil {
 				removeChainPos, err2 := client.chainAPIV6(ctx, routerChainName, httpDel)
 				if !removeChainPos || err2 != nil {
-					tfErr := d.Set("position", 0)
-					if tfErr != nil {
+					if tfErr := d.Set("position", 0); tfErr != nil {
 						panic(tfErr)
 					}
 
@@ -222,8 +207,7 @@ func resourceProjectIPv6Update(ctx context.Context, d *schema.ResourceData, m in
 						"error for delete router_chain_pos %s (please delete manually) : %s",
 						err, routerChainName, err2))
 				}
-				tfErr := d.Set("position", 0)
-				if tfErr != nil {
+				if tfErr := d.Set("position", 0); tfErr != nil {
 					panic(tfErr)
 				}
 
@@ -231,18 +215,15 @@ func resourceProjectIPv6Update(ctx context.Context, d *schema.ResourceData, m in
 			}
 			if !d.HasChange("cidr_blocks") {
 				for _, cidr := range d.Get("cidr_blocks").(*schema.Set).List() {
-					err := checkCIDRBlocksString(cidr.(string), ipv6ver)
-					if err != nil {
+					if err := checkCIDRBlocksString(cidr.(string), ipv6ver); err != nil {
 						return diag.FromErr(err)
 					}
-					_, err = cidrForProjectV6(ctx, cidr.(string), nPos.(int), httpPut, d, m)
-					if err != nil {
+					if _, err = cidrForProjectV6(ctx, cidr.(string), nPos.(int), httpPut, d, m); err != nil {
 						return diag.FromErr(err)
 					}
 				}
 
-				err := client.saveV6(ctx)
-				if err != nil {
+				if err := client.saveV6(ctx); err != nil {
 					return diag.FromErr(fmt.Errorf("ip6tables save failed : %w", err))
 				}
 			}
@@ -254,24 +235,20 @@ func resourceProjectIPv6Update(ctx context.Context, d *schema.ResourceData, m in
 		oldCIDR, newCIDR := d.GetChange("cidr_blocks")
 		cidrListRemove := computeRemove(oldCIDR.(*schema.Set).List(), newCIDR.(*schema.Set).List())
 		for _, cidr := range cidrListRemove {
-			_, err := cidrForProjectV6(ctx, cidr.(string), nPos.(int), httpDel, d, m)
-			if err != nil {
+			if _, err := cidrForProjectV6(ctx, cidr.(string), nPos.(int), httpDel, d, m); err != nil {
 				return diag.FromErr(err)
 			}
 		}
 		for _, cidr := range d.Get("cidr_blocks").(*schema.Set).List() {
-			err := checkCIDRBlocksString(cidr.(string), ipv6ver)
-			if err != nil {
+			if err := checkCIDRBlocksString(cidr.(string), ipv6ver); err != nil {
 				return diag.FromErr(err)
 			}
-			_, err = cidrForProjectV6(ctx, cidr.(string), nPos.(int), httpPut, d, m)
-			if err != nil {
+			if _, err := cidrForProjectV6(ctx, cidr.(string), nPos.(int), httpPut, d, m); err != nil {
 				return diag.FromErr(err)
 			}
 		}
 
-		err := client.saveV6(ctx)
-		if err != nil {
+		if err := client.saveV6(ctx); err != nil {
 			return diag.FromErr(fmt.Errorf("ip6tables save failed : %w", err))
 		}
 	}
@@ -279,23 +256,20 @@ func resourceProjectIPv6Update(ctx context.Context, d *schema.ResourceData, m in
 		if d.HasChange("cidr_blocks") && oPos.(int) == 0 && nPos.(int) > 0 {
 			oldCIDR, _ := d.GetChange("cidr_blocks")
 			for _, cidr := range oldCIDR.(*schema.Set).List() {
-				_, err := cidrForProjectV6(ctx, cidr.(string), 0, httpDel, d, m)
-				if err != nil {
+				if _, err := cidrForProjectV6(ctx, cidr.(string), 0, httpDel, d, m); err != nil {
 					return diag.FromErr(err)
 				}
 			}
 		}
 		if nPos.(int) > 0 {
 			for _, cidr := range d.Get("cidr_blocks").(*schema.Set).List() {
-				_, err := cidrForProjectV6(ctx, cidr.(string), 0, httpDel, d, m)
-				if err != nil {
+				if _, err := cidrForProjectV6(ctx, cidr.(string), 0, httpDel, d, m); err != nil {
 					return diag.FromErr(err)
 				}
 			}
 		}
 	}
-	tfErr := d.Set("position", nPos.(int))
-	if tfErr != nil {
+	if tfErr := d.Set("position", nPos.(int)); tfErr != nil {
 		panic(tfErr)
 	}
 
@@ -311,13 +285,11 @@ func resourceProjectIPv6Delete(ctx context.Context, d *schema.ResourceData, m in
 
 	cidrListRemove := d.Get("cidr_blocks").(*schema.Set).List()
 	for _, cidr := range cidrListRemove {
-		_, err := cidrForProjectV6(ctx, cidr.(string), absolute(d.Get("position").(int)), httpDel, d, m)
-		if err != nil {
+		if _, err := cidrForProjectV6(ctx, cidr.(string), absolute(d.Get("position").(int)), httpDel, d, m); err != nil {
 			return diag.FromErr(err)
 		}
 	}
-	chainDeleted, err := client.chainAPIV6(ctx, d.Get("name").(string), httpDel)
-	if !chainDeleted || err != nil {
+	if chainDeleted, err := client.chainAPIV6(ctx, d.Get("name").(string), httpDel); !chainDeleted || err != nil {
 		return diag.FromErr(fmt.Errorf("delete project %s failed : %w", d.Get("name"), err))
 	}
 	if d.Get("position").(int) != 0 {
@@ -332,8 +304,7 @@ func resourceProjectIPv6Delete(ctx context.Context, d *schema.ResourceData, m in
 		}
 	}
 	d.SetId("")
-	err = client.saveV6(ctx)
-	if err != nil {
+	if err := client.saveV6(ctx); err != nil {
 		return diag.FromErr(fmt.Errorf("ip6tables save failed : %w", err))
 	}
 

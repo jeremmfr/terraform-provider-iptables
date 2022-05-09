@@ -126,8 +126,7 @@ func resourceRawRead(ctx context.Context, d *schema.ResourceData, m interface{})
 		if err != nil {
 			return diag.FromErr(err)
 		}
-		tfErr := d.Set("rule", rawList)
-		if tfErr != nil {
+		if tfErr := d.Set("rule", rawList); tfErr != nil {
 			panic(tfErr)
 		}
 	} else {
@@ -137,8 +136,7 @@ func resourceRawRead(ctx context.Context, d *schema.ResourceData, m interface{})
 		if err != nil {
 			return diag.FromErr(err)
 		}
-		tfErr := d.Set("rule", rawList)
-		if tfErr != nil {
+		if tfErr := d.Set("rule", rawList); tfErr != nil {
 			panic(tfErr)
 		}
 	}
@@ -162,14 +160,12 @@ func resourceRawUpdate(ctx context.Context, d *schema.ResourceData, m interface{
 		newRuleSetDiff := newRuleSet.Difference(oldRuleSet)
 
 		oldRuleSetRemove := computeOutSlicesOfMap(oldRuleSetDiff.List(), newRuleSetDiff.List())
-		_, err := rawRule(ctx, oldRuleSetRemove, httpDel, m)
-		if err != nil {
+		if _, err := rawRule(ctx, oldRuleSetRemove, httpDel, m); err != nil {
 			d.SetId("")
 
 			return diag.FromErr(err)
 		}
-		_, err = rawRule(ctx, newRuleSet.List(), httpPut, m)
-		if err != nil {
+		if _, err := rawRule(ctx, newRuleSet.List(), httpPut, m); err != nil {
 			d.SetId("")
 
 			return diag.FromErr(err)
@@ -186,13 +182,11 @@ func resourceRawUpdate(ctx context.Context, d *schema.ResourceData, m interface{
 func resourceRawDelete(ctx context.Context, d *schema.ResourceData, m interface{}) diag.Diagnostics {
 	rule := d.Get("rule")
 	ruleSet := rule.(*schema.Set)
-	_, err := rawRule(ctx, ruleSet.List(), httpDel, m)
-	if err != nil {
+	if _, err := rawRule(ctx, ruleSet.List(), httpDel, m); err != nil {
 		return diag.FromErr(err)
 	}
 	client := m.(*Client)
-	err = client.saveV4(ctx)
-	if err != nil {
+	if err := client.saveV4(ctx); err != nil {
 		return diag.FromErr(fmt.Errorf("iptables save failed : %w", err))
 	}
 

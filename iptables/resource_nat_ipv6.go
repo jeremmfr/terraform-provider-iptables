@@ -152,13 +152,11 @@ func resourceNatIPv6Create(ctx context.Context, d *schema.ResourceData, m interf
 func resourceNatIPv6Read(ctx context.Context, d *schema.ResourceData, m interface{}) diag.Diagnostics {
 	if d.HasChange("on_cidr_blocks") {
 		oldOnCIDR, _ := d.GetChange("on_cidr_blocks")
-		err := natReadOnCIDRV6(ctx, oldOnCIDR.(*schema.Set).List(), d, m)
-		if err != nil {
+		if err := natReadOnCIDRV6(ctx, oldOnCIDR.(*schema.Set).List(), d, m); err != nil {
 			return diag.FromErr(err)
 		}
 	} else {
-		err := natReadOnCIDRV6(ctx, d.Get("on_cidr_blocks").(*schema.Set).List(), d, m)
-		if err != nil {
+		if err := natReadOnCIDRV6(ctx, d.Get("on_cidr_blocks").(*schema.Set).List(), d, m); err != nil {
 			return diag.FromErr(err)
 		}
 	}
@@ -177,8 +175,7 @@ func resourceNatIPv6Update(ctx context.Context, d *schema.ResourceData, m interf
 		}
 	}
 
-	err := checkNatPositionAndCIDRList(d)
-	if err != nil {
+	if err := checkNatPositionAndCIDRList(d); err != nil {
 		d.SetId("")
 
 		return diag.FromErr(err)
@@ -187,29 +184,25 @@ func resourceNatIPv6Update(ctx context.Context, d *schema.ResourceData, m interf
 		oldOnCIDR, newOnCIDR := d.GetChange("on_cidr_blocks")
 		onCIDRRemove := computeRemove(oldOnCIDR.(*schema.Set).List(), newOnCIDR.(*schema.Set).List())
 
-		err = natRemoveOnCIDRV6(ctx, onCIDRRemove, d, m)
-		if err != nil {
+		if err := natRemoveOnCIDRV6(ctx, onCIDRRemove, d, m); err != nil {
 			d.SetId("")
 
 			return diag.FromErr(err)
 		}
-		err = natAddOnCIDRV6(ctx, d.Get("on_cidr_blocks").(*schema.Set).List(), d, m)
-		if err != nil {
+		if err := natAddOnCIDRV6(ctx, d.Get("on_cidr_blocks").(*schema.Set).List(), d, m); err != nil {
 			d.SetId("")
 
 			return diag.FromErr(err)
 		}
 	} else {
-		err = natAddOnCIDRV6(ctx, d.Get("on_cidr_blocks").(*schema.Set).List(), d, m)
-		if err != nil {
+		if err := natAddOnCIDRV6(ctx, d.Get("on_cidr_blocks").(*schema.Set).List(), d, m); err != nil {
 			d.SetId("")
 
 			return diag.FromErr(err)
 		}
 	}
 	client := m.(*Client)
-	err = client.saveV6(ctx)
-	if err != nil {
+	if err := client.saveV6(ctx); err != nil {
 		return diag.FromErr(fmt.Errorf("ip6tables save failed : %w", err))
 	}
 
@@ -217,15 +210,13 @@ func resourceNatIPv6Update(ctx context.Context, d *schema.ResourceData, m interf
 }
 
 func resourceNatIPv6Delete(ctx context.Context, d *schema.ResourceData, m interface{}) diag.Diagnostics {
-	err := natRemoveOnCIDRV6(ctx, d.Get("on_cidr_blocks").(*schema.Set).List(), d, m)
-	if err != nil {
+	if err := natRemoveOnCIDRV6(ctx, d.Get("on_cidr_blocks").(*schema.Set).List(), d, m); err != nil {
 		d.SetId(d.Get("name").(string) + "!")
 
 		return diag.FromErr(err)
 	}
 	client := m.(*Client)
-	err = client.saveV6(ctx)
-	if err != nil {
+	if err := client.saveV6(ctx); err != nil {
 		return diag.FromErr(fmt.Errorf("ip6tables save failed : %w", err))
 	}
 
@@ -329,8 +320,7 @@ func natRemoveOnCIDRV6(ctx context.Context, onCIDRList []interface{}, d *schema.
 
 func natAddOnCIDRV6(ctx context.Context, onCIDRList []interface{}, d *schema.ResourceData, m interface{}) error {
 	for _, cidr := range onCIDRList {
-		err := checkCIDRBlocksString(cidr.(string), ipv6ver)
-		if err != nil {
+		if err := checkCIDRBlocksString(cidr.(string), ipv6ver); err != nil {
 			return err
 		}
 		if d.HasChange("snat") {
@@ -342,8 +332,7 @@ func natAddOnCIDRV6(ctx context.Context, onCIDRList []interface{}, d *schema.Res
 			newSnatSetDiffExpanded := expandCIDRInNatList(newSnatSetDiff.List(), strSnat, ipv6ver)
 			oldSnatSetExpandedRemove := computeOutSlicesOfMap(oldSnatSetDiffExpanded, newSnatSetDiffExpanded)
 
-			err := checkNat(newSnat.(*schema.Set).List())
-			if err != nil {
+			if err := checkNat(newSnat.(*schema.Set).List()); err != nil {
 				return err
 			}
 			if _, err := natListCommandV6(
@@ -355,8 +344,7 @@ func natAddOnCIDRV6(ctx context.Context, onCIDRList []interface{}, d *schema.Res
 				return err
 			}
 		} else {
-			err := checkNat(d.Get("snat").(*schema.Set).List())
-			if err != nil {
+			if err := checkNat(d.Get("snat").(*schema.Set).List()); err != nil {
 				return err
 			}
 			if _, err := natListCommandV6(
@@ -373,8 +361,7 @@ func natAddOnCIDRV6(ctx context.Context, onCIDRList []interface{}, d *schema.Res
 			newDnatSetDiffExpanded := expandCIDRInNatList(newDnatSetDiff.List(), strDnat, ipv6ver)
 			oldDnatSetExpandedRemove := computeOutSlicesOfMap(oldDnatSetDiffExpanded, newDnatSetDiffExpanded)
 
-			err := checkNat(newDnat.(*schema.Set).List())
-			if err != nil {
+			if err := checkNat(newDnat.(*schema.Set).List()); err != nil {
 				return err
 			}
 			if _, err := natListCommandV6(
@@ -386,8 +373,7 @@ func natAddOnCIDRV6(ctx context.Context, onCIDRList []interface{}, d *schema.Res
 				return err
 			}
 		} else {
-			err := checkNat(d.Get("dnat").(*schema.Set).List())
-			if err != nil {
+			if err := checkNat(d.Get("dnat").(*schema.Set).List()); err != nil {
 				return err
 			}
 			if _, err := natListCommandV6(
@@ -419,8 +405,7 @@ func natListCommandV6(
 			natOKnoPos := false
 			natExpanded := expandCIDRInNat(natElement, way, ipv6ver)
 			for _, natExpandedElement := range natExpanded {
-				err := natCmdV6(ctx, onCIDR, natExpandedElement, httpGet, m)
-				if err != nil {
+				if err := natCmdV6(ctx, onCIDR, natExpandedElement, httpGet, m); err != nil {
 					if !strings.Contains(err.Error(), noExists) {
 						return nil, err
 					}
@@ -443,8 +428,7 @@ func natListCommandV6(
 	case httpDel:
 		if cidrExpanded {
 			for _, natElement := range natList {
-				err := natCmdV6(ctx, onCIDR, natElement, httpDel, m)
-				if err != nil {
+				if err := natCmdV6(ctx, onCIDR, natElement, httpDel, m); err != nil {
 					return nil, err
 				}
 			}
@@ -452,8 +436,7 @@ func natListCommandV6(
 			for _, natElement := range natList {
 				natExpanded := expandCIDRInNat(natElement, way, ipv6ver)
 				for _, natExpandedElement := range natExpanded {
-					err := natCmdV6(ctx, onCIDR, natExpandedElement, httpDel, m)
-					if err != nil {
+					if err := natCmdV6(ctx, onCIDR, natExpandedElement, httpDel, m); err != nil {
 						return nil, err
 					}
 				}
@@ -464,12 +447,10 @@ func natListCommandV6(
 	case httpPut:
 		if cidrExpanded {
 			for _, natElement := range natList {
-				err := checkCIDRBlocksInMap(natElement.(map[string]interface{}), ipv6ver)
-				if err != nil {
+				if err := checkCIDRBlocksInMap(natElement.(map[string]interface{}), ipv6ver); err != nil {
 					return nil, err
 				}
-				err = natCmdV6(ctx, onCIDR, natElement, httpPut, m)
-				if err != nil {
+				if err := natCmdV6(ctx, onCIDR, natElement, httpPut, m); err != nil {
 					return nil, err
 				}
 			}
@@ -477,12 +458,10 @@ func natListCommandV6(
 			for _, natElement := range natList {
 				natExpand := expandCIDRInNat(natElement, way, ipv6ver)
 				for _, natExpandElement := range natExpand {
-					err := checkCIDRBlocksInMap(natExpandElement.(map[string]interface{}), ipv6ver)
-					if err != nil {
+					if err := checkCIDRBlocksInMap(natExpandElement.(map[string]interface{}), ipv6ver); err != nil {
 						return nil, err
 					}
-					err = natCmdV6(ctx, onCIDR, natExpandElement, httpPut, m)
-					if err != nil {
+					if err := natCmdV6(ctx, onCIDR, natExpandElement, httpPut, m); err != nil {
 						return nil, err
 					}
 				}
@@ -502,8 +481,7 @@ func natCmdV6(ctx context.Context, onCIDR string, nat interface{}, method string
 	}
 
 	ma := nat.(map[string]interface{})
-	err := checkCIDRBlocksInMap(ma, ipv6ver)
-	if err != nil {
+	if err := checkCIDRBlocksInMap(ma, ipv6ver); err != nil {
 		return err
 	}
 	var dstOk string

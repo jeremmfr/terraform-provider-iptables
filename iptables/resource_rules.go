@@ -229,8 +229,7 @@ func resourceRulesRead(ctx context.Context, d *schema.ResourceData, m interface{
 	if d.HasChange("project") {
 		o, _ := d.GetChange("project")
 		if o != "" {
-			tfErr := d.Set("project", o)
-			if tfErr != nil {
+			if tfErr := d.Set("project", o); tfErr != nil {
 				panic(tfErr)
 			}
 
@@ -240,13 +239,11 @@ func resourceRulesRead(ctx context.Context, d *schema.ResourceData, m interface{
 
 	if d.HasChange("on_cidr_blocks") {
 		oldOnCIDR, _ := d.GetChange("on_cidr_blocks")
-		err := rulesReadOnCIDR(ctx, oldOnCIDR.(*schema.Set).List(), d, m)
-		if err != nil {
+		if err := rulesReadOnCIDR(ctx, oldOnCIDR.(*schema.Set).List(), d, m); err != nil {
 			return diag.FromErr(err)
 		}
 	} else {
-		err := rulesReadOnCIDR(ctx, d.Get("on_cidr_blocks").(*schema.Set).List(), d, m)
-		if err != nil {
+		if err := rulesReadOnCIDR(ctx, d.Get("on_cidr_blocks").(*schema.Set).List(), d, m); err != nil {
 			return diag.FromErr(err)
 		}
 	}
@@ -265,8 +262,7 @@ func resourceRulesUpdate(ctx context.Context, d *schema.ResourceData, m interfac
 		}
 	}
 
-	err := checkRulesPositionAndCIDRList(d)
-	if err != nil {
+	if err := checkRulesPositionAndCIDRList(d); err != nil {
 		d.SetId("")
 
 		return diag.FromErr(err)
@@ -284,29 +280,25 @@ func resourceRulesUpdate(ctx context.Context, d *schema.ResourceData, m interfac
 		oldOnCIDR, newOnCIDR := d.GetChange("on_cidr_blocks")
 		onCIDRRemove := computeRemove(oldOnCIDR.(*schema.Set).List(), newOnCIDR.(*schema.Set).List())
 
-		err = rulesRemoveOnCIDR(ctx, onCIDRRemove, d, m)
-		if err != nil {
+		if err := rulesRemoveOnCIDR(ctx, onCIDRRemove, d, m); err != nil {
 			d.SetId("")
 
 			return diag.FromErr(err)
 		}
-		err = rulesAddOncidr(ctx, d.Get("on_cidr_blocks").(*schema.Set).List(), d, m)
-		if err != nil {
+		if err := rulesAddOncidr(ctx, d.Get("on_cidr_blocks").(*schema.Set).List(), d, m); err != nil {
 			d.SetId("")
 
 			return diag.FromErr(err)
 		}
 	} else {
-		err = rulesAddOncidr(ctx, d.Get("on_cidr_blocks").(*schema.Set).List(), d, m)
-		if err != nil {
+		if err := rulesAddOncidr(ctx, d.Get("on_cidr_blocks").(*schema.Set).List(), d, m); err != nil {
 			d.SetId("")
 
 			return diag.FromErr(err)
 		}
 	}
 	client := m.(*Client)
-	err = client.saveV4(ctx)
-	if err != nil {
+	if err := client.saveV4(ctx); err != nil {
 		return diag.FromErr(fmt.Errorf("iptables save failed : %w", err))
 	}
 
@@ -314,15 +306,13 @@ func resourceRulesUpdate(ctx context.Context, d *schema.ResourceData, m interfac
 }
 
 func resourceRulesDelete(ctx context.Context, d *schema.ResourceData, m interface{}) diag.Diagnostics {
-	err := rulesRemoveOnCIDR(ctx, d.Get("on_cidr_blocks").(*schema.Set).List(), d, m)
-	if err != nil {
+	if err := rulesRemoveOnCIDR(ctx, d.Get("on_cidr_blocks").(*schema.Set).List(), d, m); err != nil {
 		d.SetId(d.Get("name").(string) + "!")
 
 		return diag.FromErr(err)
 	}
 	client := m.(*Client)
-	err = client.saveV4(ctx)
-	if err != nil {
+	if err := client.saveV4(ctx); err != nil {
 		return diag.FromErr(fmt.Errorf("iptables save failed : %w", err))
 	}
 
@@ -399,8 +389,7 @@ func rulesRemoveOnCIDR(ctx context.Context, onCIDRList []interface{}, d *schema.
 
 func rulesAddOncidr(ctx context.Context, onCIDRList []interface{}, d *schema.ResourceData, m interface{}) error {
 	for _, cidr := range onCIDRList {
-		err := checkCIDRBlocksString(cidr.(string), ipv4ver)
-		if err != nil {
+		if err := checkCIDRBlocksString(cidr.(string), ipv4ver); err != nil {
 			return err
 		}
 		if d.HasChange("ingress") {
@@ -478,8 +467,7 @@ func gressListCommand(
 			gressOKnoPos := false
 			gressExpand := expandCIDRInGress(gressElement, ipv4ver)
 			for _, gressExpandElement := range gressExpand {
-				err := gressCmd(ctx, onCIDR, gressExpandElement, way, httpGet, d, m)
-				if err != nil {
+				if err := gressCmd(ctx, onCIDR, gressExpandElement, way, httpGet, d, m); err != nil {
 					if !strings.Contains(err.Error(), noExists) {
 						return nil, err
 					}
@@ -502,8 +490,7 @@ func gressListCommand(
 	case httpDel:
 		if cidrExpanded {
 			for _, gressElement := range gressList {
-				err := gressCmd(ctx, onCIDR, gressElement, way, httpDel, d, m)
-				if err != nil {
+				if err := gressCmd(ctx, onCIDR, gressElement, way, httpDel, d, m); err != nil {
 					return nil, err
 				}
 			}
@@ -511,8 +498,7 @@ func gressListCommand(
 			for _, gressElement := range gressList {
 				gressExpand := expandCIDRInGress(gressElement, ipv4ver)
 				for _, gressExpandElement := range gressExpand {
-					err := gressCmd(ctx, onCIDR, gressExpandElement, way, httpDel, d, m)
-					if err != nil {
+					if err := gressCmd(ctx, onCIDR, gressExpandElement, way, httpDel, d, m); err != nil {
 						return nil, err
 					}
 				}
@@ -523,12 +509,10 @@ func gressListCommand(
 	case httpPut:
 		if cidrExpanded {
 			for _, gressElement := range gressList {
-				err := checkCIDRBlocksInMap(gressElement.(map[string]interface{}), ipv4ver)
-				if err != nil {
+				if err := checkCIDRBlocksInMap(gressElement.(map[string]interface{}), ipv4ver); err != nil {
 					return nil, err
 				}
-				err = gressCmd(ctx, onCIDR, gressElement, way, httpPut, d, m)
-				if err != nil {
+				if err := gressCmd(ctx, onCIDR, gressElement, way, httpPut, d, m); err != nil {
 					return nil, err
 				}
 			}
@@ -536,12 +520,10 @@ func gressListCommand(
 			for _, gressElement := range gressList {
 				gressExpand := expandCIDRInGress(gressElement, ipv4ver)
 				for _, gressExpandElement := range gressExpand {
-					err := checkCIDRBlocksInMap(gressExpandElement.(map[string]interface{}), ipv4ver)
-					if err != nil {
+					if err := checkCIDRBlocksInMap(gressExpandElement.(map[string]interface{}), ipv4ver); err != nil {
 						return nil, err
 					}
-					err = gressCmd(ctx, onCIDR, gressExpandElement, way, httpPut, d, m)
-					if err != nil {
+					if err := gressCmd(ctx, onCIDR, gressExpandElement, way, httpPut, d, m); err != nil {
 						return nil, err
 					}
 				}
