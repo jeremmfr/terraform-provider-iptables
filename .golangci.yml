@@ -19,7 +19,6 @@ linters:
     - cyclop
     - forcetypeassert
     - wrapcheck
-    - errorlint
     - varnamelen
     - maintidx
 linters-settings:

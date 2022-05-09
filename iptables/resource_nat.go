@@ -213,7 +213,7 @@ func resourceNatUpdate(ctx context.Context, d *schema.ResourceData, m interface{
 	client := m.(*Client)
 	err = client.saveV4(ctx)
 	if err != nil {
-		return diag.FromErr(fmt.Errorf("iptables save failed : %s", err))
+		return diag.FromErr(fmt.Errorf("iptables save failed : %w", err))
 	}
 
 	return nil
@@ -229,7 +229,7 @@ func resourceNatDelete(ctx context.Context, d *schema.ResourceData, m interface{
 	client := m.(*Client)
 	err = client.saveV4(ctx)
 	if err != nil {
-		return diag.FromErr(fmt.Errorf("iptables save failed : %s", err))
+		return diag.FromErr(fmt.Errorf("iptables save failed : %w", err))
 	}
 
 	return nil
@@ -599,56 +599,56 @@ func natCmd(ctx context.Context, onCIDR string, nat interface{}, method string, 
 	case httpDel:
 		natExistsNoPos, err := client.natAPIV4(ctx, natRuleNoPos, httpGet)
 		if err != nil {
-			return fmt.Errorf("check rules nat for %s %v failed : %s", onCIDR, natRuleNoPos, err)
+			return fmt.Errorf("check rules nat for %s %v failed : %w", onCIDR, natRuleNoPos, err)
 		}
 		if natExistsNoPos {
 			ret, err := client.natAPIV4(ctx, natRuleNoPos, httpDel)
 			if !ret || err != nil {
-				return fmt.Errorf("delete rules nat %s %v failed : %s", onCIDR, natRuleNoPos, err)
+				return fmt.Errorf("delete rules nat %s %v failed : %w", onCIDR, natRuleNoPos, err)
 			}
 		}
 	case httpPut:
 		natExists, err := client.natAPIV4(ctx, natRule, httpGet)
 		if err != nil {
-			return fmt.Errorf("check rules nat for %s %v failed : %s", onCIDR, natRule, err)
+			return fmt.Errorf("check rules nat for %s %v failed : %w", onCIDR, natRule, err)
 		}
 		if !natExists {
 			if ma["position"].(string) != "?" {
 				natExistsNoPos, err := client.natAPIV4(ctx, natRuleNoPos, httpGet)
 				if err != nil {
-					return fmt.Errorf("check rules nat for %s %v failed : %s", onCIDR, natRuleNoPos, err)
+					return fmt.Errorf("check rules nat for %s %v failed : %w", onCIDR, natRuleNoPos, err)
 				}
 				if natExistsNoPos {
 					ret, err := client.natAPIV4(ctx, natRuleNoPos, httpDel)
 					if !ret || err != nil {
-						return fmt.Errorf("delete rules with bad position on nat %s %v failed : %s", onCIDR, natRuleNoPos, err)
+						return fmt.Errorf("delete rules with bad position on nat %s %v failed : %w", onCIDR, natRuleNoPos, err)
 					}
 					ret, err = client.natAPIV4(ctx, natRule, httpPut)
 					if !ret || err != nil {
-						return fmt.Errorf("add rules nat %s %v failed : %s", onCIDR, natRule, err)
+						return fmt.Errorf("add rules nat %s %v failed : %w", onCIDR, natRule, err)
 					}
 				} else {
 					ret, err := client.natAPIV4(ctx, natRule, httpPut)
 					if !ret || err != nil {
-						return fmt.Errorf("add rules nat %s %v failed : %s", onCIDR, natRule, err)
+						return fmt.Errorf("add rules nat %s %v failed : %w", onCIDR, natRule, err)
 					}
 				}
 			} else {
 				ret, err := client.natAPIV4(ctx, natRule, httpPut)
 				if !ret || err != nil {
-					return fmt.Errorf("add rules nat %s %v failed : %s", onCIDR, natRule, err)
+					return fmt.Errorf("add rules nat %s %v failed : %w", onCIDR, natRule, err)
 				}
 			}
 		}
 	case httpGet:
 		natExists, err := client.natAPIV4(ctx, natRule, httpGet)
 		if err != nil {
-			return fmt.Errorf("check rules nat for %s %v failed : %s", onCIDR, natRule, err)
+			return fmt.Errorf("check rules nat for %s %v failed : %w", onCIDR, natRule, err)
 		}
 		if !natExists {
 			natExistsNoPos, err := client.natAPIV4(ctx, natRuleNoPos, httpGet)
 			if err != nil {
-				return fmt.Errorf("check rules nat for %s %v failed : %s", onCIDR, natRuleNoPos, err)
+				return fmt.Errorf("check rules nat for %s %v failed : %w", onCIDR, natRuleNoPos, err)
 			}
 			if natExistsNoPos {
 				return fmt.Errorf(noExistsNoPosErr)

@@ -212,7 +212,7 @@ func resourceRulesCreate(ctx context.Context, d *schema.ResourceData, m interfac
 
 	checkProcject, err := client.chainAPIV4(ctx, d.Get("project").(string), httpGet)
 	if err != nil {
-		return diag.FromErr(fmt.Errorf("failed check project %s : %s", d.Get("project"), err))
+		return diag.FromErr(fmt.Errorf("failed check project %s : %w", d.Get("project"), err))
 	}
 	if !checkProcject {
 		return diag.FromErr(fmt.Errorf("failed unknown project %s", d.Get("project")))
@@ -307,7 +307,7 @@ func resourceRulesUpdate(ctx context.Context, d *schema.ResourceData, m interfac
 	client := m.(*Client)
 	err = client.saveV4(ctx)
 	if err != nil {
-		return diag.FromErr(fmt.Errorf("iptables save failed : %s", err))
+		return diag.FromErr(fmt.Errorf("iptables save failed : %w", err))
 	}
 
 	return nil
@@ -323,7 +323,7 @@ func resourceRulesDelete(ctx context.Context, d *schema.ResourceData, m interfac
 	client := m.(*Client)
 	err = client.saveV4(ctx)
 	if err != nil {
-		return diag.FromErr(fmt.Errorf("iptables save failed : %s", err))
+		return diag.FromErr(fmt.Errorf("iptables save failed : %w", err))
 	}
 
 	return nil
@@ -662,56 +662,56 @@ func gressCmd(
 	case httpDel:
 		ruleexistsNoPos, err := client.rulesAPIV4(ctx, ruleNoPos, httpGet)
 		if err != nil {
-			return fmt.Errorf("check rules exists for %s %v failed : %s", onCIDR, ruleNoPos, err)
+			return fmt.Errorf("check rules exists for %s %v failed : %w", onCIDR, ruleNoPos, err)
 		}
 		if ruleexistsNoPos {
 			ret, err := client.rulesAPIV4(ctx, ruleNoPos, httpDel)
 			if !ret || err != nil {
-				return fmt.Errorf("delete rules %s %v failed : %s", onCIDR, ruleNoPos, err)
+				return fmt.Errorf("delete rules %s %v failed : %w", onCIDR, ruleNoPos, err)
 			}
 		}
 	case httpPut:
 		ruleexists, err := client.rulesAPIV4(ctx, rule, httpGet)
 		if err != nil {
-			return fmt.Errorf("check rules exists for %s %v failed : %s", onCIDR, rule, err)
+			return fmt.Errorf("check rules exists for %s %v failed : %w", onCIDR, rule, err)
 		}
 		if !ruleexists {
 			if ma["position"].(string) != "?" {
 				ruleexistsNoPos, err := client.rulesAPIV4(ctx, ruleNoPos, httpGet)
 				if err != nil {
-					return fmt.Errorf("check rules exists for %s %v failed : %s", onCIDR, ruleNoPos, err)
+					return fmt.Errorf("check rules exists for %s %v failed : %w", onCIDR, ruleNoPos, err)
 				}
 				if ruleexistsNoPos {
 					ret, err := client.rulesAPIV4(ctx, ruleNoPos, httpDel)
 					if !ret || err != nil {
-						return fmt.Errorf("delete rules with bad position %s %v failed : %s", onCIDR, ruleNoPos, err)
+						return fmt.Errorf("delete rules with bad position %s %v failed : %w", onCIDR, ruleNoPos, err)
 					}
 					ret, err = client.rulesAPIV4(ctx, rule, httpPut)
 					if !ret || err != nil {
-						return fmt.Errorf("add rules %s %v failed : %s", onCIDR, rule, err)
+						return fmt.Errorf("add rules %s %v failed : %w", onCIDR, rule, err)
 					}
 				} else {
 					ret, err := client.rulesAPIV4(ctx, rule, httpPut)
 					if !ret || err != nil {
-						return fmt.Errorf("add rules %s %v failed : %s", onCIDR, rule, err)
+						return fmt.Errorf("add rules %s %v failed : %w", onCIDR, rule, err)
 					}
 				}
 			} else {
 				ret, err := client.rulesAPIV4(ctx, rule, httpPut)
 				if !ret || err != nil {
-					return fmt.Errorf("add rules %s %v failed : %s", onCIDR, rule, err)
+					return fmt.Errorf("add rules %s %v failed : %w", onCIDR, rule, err)
 				}
 			}
 		}
 	case httpGet:
 		ruleexists, err := client.rulesAPIV4(ctx, rule, httpGet)
 		if err != nil {
-			return fmt.Errorf("check rules exists for %s %v failed : %s", onCIDR, rule, err)
+			return fmt.Errorf("check rules exists for %s %v failed : %w", onCIDR, rule, err)
 		}
 		if !ruleexists {
 			ruleexistsNoPos, err := client.rulesAPIV4(ctx, ruleNoPos, httpGet)
 			if err != nil {
-				return fmt.Errorf("check rules exists for %s %v failed : %s", onCIDR, ruleNoPos, err)
+				return fmt.Errorf("check rules exists for %s %v failed : %w", onCIDR, ruleNoPos, err)
 			}
 			if ruleexistsNoPos {
 				return fmt.Errorf(noExistsNoPosErr)

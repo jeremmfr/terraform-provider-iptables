@@ -210,7 +210,7 @@ func resourceRulesIPv6Create(ctx context.Context, d *schema.ResourceData, m inte
 
 	checkProcject, err := client.chainAPIV6(ctx, d.Get("project").(string), httpGet)
 	if err != nil {
-		return diag.FromErr(fmt.Errorf("check project %s failed : %s", d.Get("project"), err))
+		return diag.FromErr(fmt.Errorf("check project %s failed : %w", d.Get("project"), err))
 	}
 	if !checkProcject {
 		return diag.FromErr(fmt.Errorf("unknown project %s", d.Get("project")))
@@ -304,7 +304,7 @@ func resourceRulesIPv6Update(ctx context.Context, d *schema.ResourceData, m inte
 	client := m.(*Client)
 	err = client.saveV6(ctx)
 	if err != nil {
-		return diag.FromErr(fmt.Errorf("ip6tables save failed : %s", err))
+		return diag.FromErr(fmt.Errorf("ip6tables save failed : %w", err))
 	}
 
 	return nil
@@ -320,7 +320,7 @@ func resourceRulesIPv6Delete(ctx context.Context, d *schema.ResourceData, m inte
 	client := m.(*Client)
 	err = client.saveV6(ctx)
 	if err != nil {
-		return diag.FromErr(fmt.Errorf("ip6tables save failed : %s", err))
+		return diag.FromErr(fmt.Errorf("ip6tables save failed : %w", err))
 	}
 
 	return nil
@@ -662,56 +662,56 @@ func gressCmdV6(
 	case httpDel:
 		ruleexistsNoPos, err := client.rulesAPIV6(ctx, ruleNoPos, httpGet)
 		if err != nil {
-			return fmt.Errorf("check rules exists for %s %v failed : %s", onCIDR, ruleNoPos, err)
+			return fmt.Errorf("check rules exists for %s %v failed : %w", onCIDR, ruleNoPos, err)
 		}
 		if ruleexistsNoPos {
 			ret, err := client.rulesAPIV6(ctx, ruleNoPos, httpDel)
 			if !ret || err != nil {
-				return fmt.Errorf("delete rules %s %v failed : %s", onCIDR, ruleNoPos, err)
+				return fmt.Errorf("delete rules %s %v failed : %w", onCIDR, ruleNoPos, err)
 			}
 		}
 	case httpPut:
 		ruleexists, err := client.rulesAPIV6(ctx, rule, httpGet)
 		if err != nil {
-			return fmt.Errorf("check rules exists for %s %v failed : %s", onCIDR, rule, err)
+			return fmt.Errorf("check rules exists for %s %v failed : %w", onCIDR, rule, err)
 		}
 		if !ruleexists {
 			if ma["position"].(string) != "?" {
 				ruleexistsNoPos, err := client.rulesAPIV6(ctx, ruleNoPos, httpGet)
 				if err != nil {
-					return fmt.Errorf("check rules exists for %s %v failed : %s", onCIDR, ruleNoPos, err)
+					return fmt.Errorf("check rules exists for %s %v failed : %w", onCIDR, ruleNoPos, err)
 				}
 				if ruleexistsNoPos {
 					ret, err := client.rulesAPIV6(ctx, ruleNoPos, httpDel)
 					if !ret || err != nil {
-						return fmt.Errorf("delete rules with bad position %s %v failed : %s", onCIDR, ruleNoPos, err)
+						return fmt.Errorf("delete rules with bad position %s %v failed : %w", onCIDR, ruleNoPos, err)
 					}
 					ret, err = client.rulesAPIV6(ctx, rule, httpPut)
 					if !ret || err != nil {
-						return fmt.Errorf("add rules %s %v failed : %s", onCIDR, rule, err)
+						return fmt.Errorf("add rules %s %v failed : %w", onCIDR, rule, err)
 					}
 				} else {
 					ret, err := client.rulesAPIV6(ctx, rule, httpPut)
 					if !ret || err != nil {
-						return fmt.Errorf("add rules %s %v failed : %s", onCIDR, rule, err)
+						return fmt.Errorf("add rules %s %v failed : %w", onCIDR, rule, err)
 					}
 				}
 			} else {
 				ret, err := client.rulesAPIV6(ctx, rule, httpPut)
 				if !ret || err != nil {
-					return fmt.Errorf("add rules %s %v failed : %s", onCIDR, rule, err)
+					return fmt.Errorf("add rules %s %v failed : %w", onCIDR, rule, err)
 				}
 			}
 		}
 	case httpGet:
 		ruleexists, err := client.rulesAPIV6(ctx, rule, httpGet)
 		if err != nil {
-			return fmt.Errorf("check rules exists for %s %v failed : %s", onCIDR, rule, err)
+			return fmt.Errorf("check rules exists for %s %v failed : %w", onCIDR, rule, err)
 		}
 		if !ruleexists {
 			ruleexistsNoPos, err := client.rulesAPIV6(ctx, ruleNoPos, httpGet)
 			if err != nil {
-				return fmt.Errorf("check rules exists for %s %v failed : %s", onCIDR, ruleNoPos, err)
+				return fmt.Errorf("check rules exists for %s %v failed : %w", onCIDR, ruleNoPos, err)
 			}
 			if ruleexistsNoPos {
 				return fmt.Errorf(noExistsNoPosErr)

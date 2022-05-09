@@ -48,12 +48,12 @@ func resourceProjectCreate(ctx context.Context, d *schema.ResourceData, m interf
 
 	checkExists, err := client.chainAPIV4(ctx, d.Get("name").(string), httpGet)
 	if err != nil {
-		return diag.FromErr(fmt.Errorf("check if project %s exist failed : %s", d.Get("name"), err))
+		return diag.FromErr(fmt.Errorf("check if project %s exist failed : %w", d.Get("name"), err))
 	}
 	if !checkExists {
 		create, err := client.chainAPIV4(ctx, d.Get("name").(string), httpPut)
 		if !create || err != nil {
-			return diag.FromErr(fmt.Errorf("create project %s failed : %s", d.Get("name"), err))
+			return diag.FromErr(fmt.Errorf("create project %s failed : %w", d.Get("name"), err))
 		}
 	} else {
 		return diag.FromErr(fmt.Errorf("project %s already exist", d.Get("name")))
@@ -68,7 +68,7 @@ func resourceProjectRead(ctx context.Context, d *schema.ResourceData, m interfac
 
 	checkExists, err := client.chainAPIV4(ctx, d.Get("name").(string), httpGet)
 	if err != nil {
-		return diag.FromErr(fmt.Errorf("read project %s failed : %s", d.Get("name"), err))
+		return diag.FromErr(fmt.Errorf("read project %s failed : %w", d.Get("name"), err))
 	}
 	if !checkExists {
 		d.SetId("")
@@ -79,7 +79,7 @@ func resourceProjectRead(ctx context.Context, d *schema.ResourceData, m interfac
 		routerChainName := strings.Join([]string{"router_chain_pos", strconv.Itoa(absolute(d.Get("position").(int)))}, "")
 		checkExists, err := client.chainAPIV4(ctx, routerChainName, httpGet)
 		if err != nil {
-			return diag.FromErr(fmt.Errorf("read chain router_chain_pos %s failed : %s", routerChainName, err))
+			return diag.FromErr(fmt.Errorf("read chain router_chain_pos %s failed : %w", routerChainName, err))
 		}
 		if !checkExists {
 			tfErr := d.Set("position", 0)
@@ -89,7 +89,7 @@ func resourceProjectRead(ctx context.Context, d *schema.ResourceData, m interfac
 		}
 		routerChainPos, err := insertPosrouter(ctx, absolute(d.Get("position").(int)), httpGet, m)
 		if err != nil {
-			return diag.FromErr(fmt.Errorf("read position %d in router_chain failed : %s", d.Get("position").(int), err))
+			return diag.FromErr(fmt.Errorf("read position %d in router_chain failed : %w", d.Get("position").(int), err))
 		}
 		if !routerChainPos {
 			tfErr := d.Set("position", absolute(d.Get("position").(int))*-1)
@@ -155,7 +155,7 @@ func resourceProjectUpdate(ctx context.Context, d *schema.ResourceData, m interf
 					panic(tfErr)
 				}
 
-				return diag.FromErr(fmt.Errorf("delete rule for position %d failed : %s", oPos.(int), err))
+				return diag.FromErr(fmt.Errorf("delete rule for position %d failed : %w", oPos.(int), err))
 			}
 			routerChainName := strings.Join([]string{"router_chain_pos", strconv.Itoa(absolute(oPos.(int)))}, "")
 			routeChainDel, err := client.chainAPIV4(ctx, routerChainName, httpDel)
@@ -165,7 +165,7 @@ func resourceProjectUpdate(ctx context.Context, d *schema.ResourceData, m interf
 					panic(tfErr)
 				}
 
-				return diag.FromErr(fmt.Errorf("delete chain %s failed : %s", routerChainName, err))
+				return diag.FromErr(fmt.Errorf("delete chain %s failed : %w", routerChainName, err))
 			}
 			tfErr := d.Set("position", 0)
 			if tfErr != nil {
@@ -181,7 +181,7 @@ func resourceProjectUpdate(ctx context.Context, d *schema.ResourceData, m interf
 					panic(tfErr)
 				}
 
-				return diag.FromErr(fmt.Errorf("check if chain %s exist failed : %s", routerChainName, err))
+				return diag.FromErr(fmt.Errorf("check if chain %s exist failed : %w", routerChainName, err))
 			}
 			if checkExists {
 				tfErr := d.Set("position", 0)
@@ -198,7 +198,7 @@ func resourceProjectUpdate(ctx context.Context, d *schema.ResourceData, m interf
 					panic(tfErr)
 				}
 
-				return diag.FromErr(fmt.Errorf("create chain %s for position : %s", routerChainName, err))
+				return diag.FromErr(fmt.Errorf("create chain %s for position : %w", routerChainName, err))
 			}
 			createPos, err := insertPosrouter(ctx, nPos.(int), httpPut, m)
 			if !createPos || err != nil {
@@ -218,7 +218,7 @@ func resourceProjectUpdate(ctx context.Context, d *schema.ResourceData, m interf
 					panic(tfErr)
 				}
 
-				return diag.FromErr(fmt.Errorf("insert position in router_chain failed : %s", err))
+				return diag.FromErr(fmt.Errorf("insert position in router_chain failed : %w", err))
 			}
 			if !d.HasChange("cidr_blocks") {
 				for _, cidr := range d.Get("cidr_blocks").(*schema.Set).List() {
@@ -233,7 +233,7 @@ func resourceProjectUpdate(ctx context.Context, d *schema.ResourceData, m interf
 				}
 				err := client.saveV4(ctx)
 				if err != nil {
-					return diag.FromErr(fmt.Errorf("iptables save failed : %s", err))
+					return diag.FromErr(fmt.Errorf("iptables save failed : %w", err))
 				}
 			}
 		}
@@ -261,7 +261,7 @@ func resourceProjectUpdate(ctx context.Context, d *schema.ResourceData, m interf
 		}
 		err := client.saveV4(ctx)
 		if err != nil {
-			return diag.FromErr(fmt.Errorf("iptables save failed : %s", err))
+			return diag.FromErr(fmt.Errorf("iptables save failed : %w", err))
 		}
 	}
 	if positionChange {
@@ -303,23 +303,23 @@ func resourceProjectDelete(ctx context.Context, d *schema.ResourceData, m interf
 
 	chainDeleted, err := client.chainAPIV4(ctx, d.Get("name").(string), httpDel)
 	if !chainDeleted || err != nil {
-		return diag.FromErr(fmt.Errorf("delete project %s failed : %s", d.Get("name"), err))
+		return diag.FromErr(fmt.Errorf("delete project %s failed : %w", d.Get("name"), err))
 	}
 	if d.Get("position").(int) != 0 {
 		rulePosDel, err := insertPosrouter(ctx, absolute(d.Get("position").(int)), httpDel, m)
 		if !rulePosDel || err != nil {
-			return diag.FromErr(fmt.Errorf("delete rule for position %d failed : %s", d.Get("position").(int), err))
+			return diag.FromErr(fmt.Errorf("delete rule for position %d failed : %w", d.Get("position").(int), err))
 		}
 		routerChainName := strings.Join([]string{"router_chain_pos", strconv.Itoa(absolute(d.Get("position").(int)))}, "")
 		routeChainDel, err := client.chainAPIV4(ctx, routerChainName, httpDel)
 		if !routeChainDel || err != nil {
-			return diag.FromErr(fmt.Errorf("delete chain %s failed : %s", routerChainName, err))
+			return diag.FromErr(fmt.Errorf("delete chain %s failed : %w", routerChainName, err))
 		}
 	}
 	d.SetId("")
 	err = client.saveV4(ctx)
 	if err != nil {
-		return diag.FromErr(fmt.Errorf("iptables save failed : %s", err))
+		return diag.FromErr(fmt.Errorf("iptables save failed : %w", err))
 	}
 
 	return nil
@@ -350,18 +350,18 @@ func cidrForProject(
 
 	routeexists, err := client.rulesAPIV4(ctx, route, httpGet)
 	if err != nil {
-		return routeexists, fmt.Errorf("check rules for cidr %s failed : %s", cidr, err)
+		return routeexists, fmt.Errorf("check rules for cidr %s failed : %w", cidr, err)
 	}
 	if !routeexists && method == httpPut {
 		routeCIDR, err := client.rulesAPIV4(ctx, route, httpPut)
 		if !routeCIDR || err != nil {
-			return routeexists, fmt.Errorf("create rules source for cidr %s failed : %s", cidr, err)
+			return routeexists, fmt.Errorf("create rules source for cidr %s failed : %w", cidr, err)
 		}
 	}
 	if routeexists && method == httpDel {
 		routeCIDR, err := client.rulesAPIV4(ctx, route, httpDel)
 		if !routeCIDR || err != nil {
-			return routeexists, fmt.Errorf("delete rules source for cidr %s failed : %s", cidr, err)
+			return routeexists, fmt.Errorf("delete rules source for cidr %s failed : %w", cidr, err)
 		}
 	}
 	if !routeexists && method == httpGet {
@@ -383,18 +383,18 @@ func cidrForProject(
 	// Apply on table filter route for destination cidr
 	routeexists, err = client.rulesAPIV4(ctx, route, httpGet)
 	if err != nil {
-		return routeexists, fmt.Errorf("check rules for cidr %s failed : %s", cidr, err)
+		return routeexists, fmt.Errorf("check rules for cidr %s failed : %w", cidr, err)
 	}
 	if !routeexists && method == httpPut {
 		routeCIDR, err := client.rulesAPIV4(ctx, route, httpPut)
 		if !routeCIDR || err != nil {
-			return routeexists, fmt.Errorf("create rules destination for cidr %s failed : %s", cidr, err)
+			return routeexists, fmt.Errorf("create rules destination for cidr %s failed : %w", cidr, err)
 		}
 	}
 	if routeexists && method == httpDel {
 		routeCIDR, err := client.rulesAPIV4(ctx, route, httpDel)
 		if !routeCIDR || err != nil {
-			return routeexists, fmt.Errorf("delete rules destination for cidr %s failed : %s", cidr, err)
+			return routeexists, fmt.Errorf("delete rules destination for cidr %s failed : %w", cidr, err)
 		}
 	}
 	if !routeexists && method == httpGet {
@@ -432,31 +432,31 @@ func insertPosrouter(ctx context.Context, position int, method string, m interfa
 	}
 	routeexists, err := client.rulesAPIV4(ctx, route, httpGet)
 	if err != nil {
-		return routeexists, fmt.Errorf("check rules for project position %d failed : %s", position, err)
+		return routeexists, fmt.Errorf("check rules for project position %d failed : %w", position, err)
 	}
 	if !routeexists && method == httpPut {
 		routePut, err := client.rulesAPIV4(ctx, route, httpPut)
 		if !routePut || err != nil {
-			return routeexists, fmt.Errorf("create rules for project position %d failed : %s", position, err)
+			return routeexists, fmt.Errorf("create rules for project position %d failed : %w", position, err)
 		}
 	}
 	if method == httpDel {
 		if routeexists {
 			routeDel, err := client.rulesAPIV4(ctx, route, httpDel)
 			if !routeDel || err != nil {
-				return routeexists, fmt.Errorf("delete rules for project position %d failed : %s", position, err)
+				return routeexists, fmt.Errorf("delete rules for project position %d failed : %w", position, err)
 			}
 		} else {
 			routeexistsNoPos, err := client.rulesAPIV4(ctx, routeNoPos, httpGet)
 			if err != nil {
 				return routeexistsNoPos, fmt.Errorf("check rules for project position "+
-					"with bad position %d failed : %s", position, err)
+					"with bad position %d failed : %w", position, err)
 			}
 			if routeexistsNoPos {
 				routeDel, err := client.rulesAPIV4(ctx, routeNoPos, httpDel)
 				if !routeDel || err != nil {
 					return routeexistsNoPos, fmt.Errorf("delete rules for project position "+
-						"with bad position %d failed : %s", position, err)
+						"with bad position %d failed : %w", position, err)
 				}
 			}
 		}
