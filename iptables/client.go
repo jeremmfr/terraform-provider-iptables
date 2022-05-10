@@ -350,9 +350,9 @@ func (client *Client) rulesAPI(ctx context.Context, version string, rule Rule, m
 	httpClient := &http.Client{Transport: tr}
 	resp, err := httpClient.Do(req)
 	if err != nil {
-		log.Printf("error when do request %s", err)
+		log.Printf("error when do request: %s", err)
 
-		return false, fmt.Errorf("error when do request %w", err)
+		return false, fmt.Errorf("error when do request: %w", err)
 	}
 	defer resp.Body.Close()
 	body, _ := ioutil.ReadAll(resp.Body)
@@ -414,9 +414,9 @@ func (client *Client) natAPI(ctx context.Context, version string, rule Rule, met
 	httpClient := &http.Client{Transport: tr}
 	resp, err := httpClient.Do(req)
 	if err != nil {
-		log.Printf("error when do request %s", err)
+		log.Printf("error when do request: %s", err)
 
-		return false, fmt.Errorf("error when do request %w", err)
+		return false, fmt.Errorf("error when do request: %w", err)
 	}
 	defer resp.Body.Close()
 	body, _ := ioutil.ReadAll(resp.Body)
@@ -487,9 +487,9 @@ func (client *Client) rawAPI(ctx context.Context, version string, rule Rule, met
 	httpClient := &http.Client{Transport: tr}
 	resp, err := httpClient.Do(req)
 	if err != nil {
-		log.Printf("error when do request %s", err)
+		log.Printf("error when do request: %s", err)
 
-		return false, fmt.Errorf("error when do request %w", err)
+		return false, fmt.Errorf("error when do request: %w", err)
 	}
 	defer resp.Body.Close()
 	body, _ := ioutil.ReadAll(resp.Body)
@@ -534,9 +534,9 @@ func (client *Client) chainAPI(ctx context.Context, version, chain, method strin
 	httpClient := &http.Client{Transport: tr}
 	resp, err := httpClient.Do(req)
 	if err != nil {
-		log.Printf("error when do request %s", err)
+		log.Printf("error when do request: %s", err)
 
-		return false, fmt.Errorf("error when do request %w", err)
+		return false, fmt.Errorf("error when do request: %w", err)
 	}
 	defer resp.Body.Close()
 	body, _ := ioutil.ReadAll(resp.Body)
@@ -580,9 +580,9 @@ func (client *Client) save(ctx context.Context, version string) error {
 	httpClient := &http.Client{Transport: tr}
 	resp, err := httpClient.Do(req)
 	if err != nil {
-		log.Printf("error when do request %s", err)
+		log.Printf("error when do request: %s", err)
 
-		return fmt.Errorf("error when do request %w", err)
+		return fmt.Errorf("error when do request: %w", err)
 	}
 	defer resp.Body.Close()
 	body, _ := ioutil.ReadAll(resp.Body)
