@@ -126,8 +126,7 @@ func resourceRawIPv6Read(ctx context.Context, d *schema.ResourceData, m interfac
 		if err != nil {
 			return diag.FromErr(err)
 		}
-		tfErr := d.Set("rule", rawList)
-		if tfErr != nil {
+		if tfErr := d.Set("rule", rawList); tfErr != nil {
 			panic(tfErr)
 		}
 	} else {
@@ -137,8 +136,7 @@ func resourceRawIPv6Read(ctx context.Context, d *schema.ResourceData, m interfac
 		if err != nil {
 			return diag.FromErr(err)
 		}
-		tfErr := d.Set("rule", rawList)
-		if tfErr != nil {
+		if tfErr := d.Set("rule", rawList); tfErr != nil {
 			panic(tfErr)
 		}
 	}
@@ -162,14 +160,12 @@ func resourceRawIPv6Update(ctx context.Context, d *schema.ResourceData, m interf
 		newRuleSetDiff := newRuleSet.Difference(oldRuleSet)
 
 		oldRuleSetRemove := computeOutSlicesOfMap(oldRuleSetDiff.List(), newRuleSetDiff.List())
-		_, err := rawRuleV6(ctx, oldRuleSetRemove, httpDel, m)
-		if err != nil {
+		if _, err := rawRuleV6(ctx, oldRuleSetRemove, httpDel, m); err != nil {
 			d.SetId("")
 
 			return diag.FromErr(err)
 		}
-		_, err = rawRuleV6(ctx, newRuleSet.List(), httpPut, m)
-		if err != nil {
+		if _, err := rawRuleV6(ctx, newRuleSet.List(), httpPut, m); err != nil {
 			d.SetId("")
 
 			return diag.FromErr(err)
@@ -177,7 +173,7 @@ func resourceRawIPv6Update(ctx context.Context, d *schema.ResourceData, m interf
 	}
 	client := m.(*Client)
 	if err := client.saveV6(ctx); err != nil {
-		return diag.FromErr(fmt.Errorf("ip6tables save failed : %s", err))
+		return diag.FromErr(fmt.Errorf("ip6tables save failed : %w", err))
 	}
 
 	return nil
@@ -186,14 +182,12 @@ func resourceRawIPv6Update(ctx context.Context, d *schema.ResourceData, m interf
 func resourceRawIPv6Delete(ctx context.Context, d *schema.ResourceData, m interface{}) diag.Diagnostics {
 	rule := d.Get("rule")
 	ruleSet := rule.(*schema.Set)
-	_, err := rawRuleV6(ctx, ruleSet.List(), httpDel, m)
-	if err != nil {
+	if _, err := rawRuleV6(ctx, ruleSet.List(), httpDel, m); err != nil {
 		return diag.FromErr(err)
 	}
 	client := m.(*Client)
-	err = client.saveV6(ctx)
-	if err != nil {
-		return diag.FromErr(fmt.Errorf("ip6tables save failed : %s", err))
+	if err := client.saveV6(ctx); err != nil {
+		return diag.FromErr(fmt.Errorf("ip6tables save failed : %w", err))
 	}
 
 	return nil
@@ -277,44 +271,44 @@ func rawRuleV6(ctx context.Context, ruleList []interface{}, method string, m int
 		case httpDel:
 			ruleexistsNoPos, err := client.rawAPIV6(ctx, ruleNoPos, httpGet)
 			if err != nil {
-				return nil, fmt.Errorf("check rules on raw for %s failed : %s", ma, err)
+				return nil, fmt.Errorf("check rules on raw for %s failed : %w", ma, err)
 			}
 			if ruleexistsNoPos {
 				ret, err := client.rawAPIV6(ctx, ruleNoPos, httpDel)
 				if !ret || err != nil {
-					return nil, fmt.Errorf("delete rules on raw %s failed : %s", ma, err)
+					return nil, fmt.Errorf("delete rules on raw %s failed : %w", ma, err)
 				}
 			}
 		case httpPut:
 			ruleexists, err := client.rawAPIV6(ctx, rule, httpGet)
 			if err != nil {
-				return nil, fmt.Errorf("check rules on raw for %s failed : %s", ma, err)
+				return nil, fmt.Errorf("check rules on raw for %s failed : %w", ma, err)
 			}
 			if !ruleexists {
 				if ma["position"].(string) != "?" {
 					ruleexistsNoPos, err := client.rawAPIV6(ctx, ruleNoPos, httpGet)
 					if err != nil {
-						return nil, fmt.Errorf("check rules on raw for %s failed : %s", ma, err)
+						return nil, fmt.Errorf("check rules on raw for %s failed : %w", ma, err)
 					}
 					if ruleexistsNoPos {
 						ret, err := client.rawAPIV6(ctx, ruleNoPos, httpDel)
 						if !ret || err != nil {
-							return nil, fmt.Errorf("delete rules with bad position on raw %s failed : %s", ma, err)
+							return nil, fmt.Errorf("delete rules with bad position on raw %s failed : %w", ma, err)
 						}
 						ret, err = client.rawAPIV6(ctx, rule, httpPut)
 						if !ret || err != nil {
-							return nil, fmt.Errorf("add rules on raw %s failed : %s", ma, err)
+							return nil, fmt.Errorf("add rules on raw %s failed : %w", ma, err)
 						}
 					} else {
 						ret, err := client.rawAPIV6(ctx, rule, httpPut)
 						if !ret || err != nil {
-							return nil, fmt.Errorf("add rules on raw %s failed : %s", ma, err)
+							return nil, fmt.Errorf("add rules on raw %s failed : %w", ma, err)
 						}
 					}
 				} else {
 					ret, err := client.rawAPIV6(ctx, rule, httpPut)
 					if !ret || err != nil {
-						return nil, fmt.Errorf("add rules on raw %s failed : %s", ma, err)
+						return nil, fmt.Errorf("add rules on raw %s failed : %w", ma, err)
 					}
 				}
 			}

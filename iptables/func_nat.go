@@ -7,7 +7,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 )
 
-func expandCIDRInNatList(nat []interface{}, way string, version string) []interface{} {
+func expandCIDRInNatList(nat []interface{}, way, version string) []interface{} {
 	var newNat []interface{}
 
 	for _, raw := range nat {
@@ -81,7 +81,7 @@ func expandCIDRInNatList(nat []interface{}, way string, version string) []interf
 	return newNat
 }
 
-func expandCIDRInNat(nat interface{}, way string, version string) []interface{} {
+func expandCIDRInNat(nat interface{}, way, version string) []interface{} {
 	var returnNat []interface{}
 	ma := nat.(map[string]interface{})
 	if ma["except_cidr_blocks"].(string) != "" {

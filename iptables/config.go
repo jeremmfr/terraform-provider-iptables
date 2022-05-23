@@ -45,7 +45,7 @@ func (c *Config) Client(ctx context.Context) (*Client, diag.Diagnostics) {
 	return client, nil
 }
 
-func getloginVault(path string, firewallIP string, key string) (string, string) {
+func getloginVault(path, firewallIP, key string) (string, string) {
 	login := ""
 	password := ""
 	client, err := vaultapi.NewClient(vaultapi.DefaultConfig())
