@@ -1,6 +1,17 @@
 <!-- markdownlint-disable-file MD041 -->
 ## upcoming release
 
+## 1.2.1 (May 23, 2022)
+
+BUG FIXES:
+
+* resource/`iptabes_nat`,`iptables_nat_ipv6`: fix reading nat blocks when a member of an on_cidr_blocks list is ok, but a previous member doesn't have all the snat/dnat rules
+* resource/`iptables_rules`,`iptables_rules_ipv6`: fix reading gress blocks when a member of an on_cidr_blocks list is ok, but a previous member doesn't have all the ingress/egress rules
+
+PATCH:
+
+* minor refactoring to fix linters errors
+
 ## 1.2.0 (July 30, 2021)
 
 * switch to the standalone SDK v2 for compatibility with last Terraform version
