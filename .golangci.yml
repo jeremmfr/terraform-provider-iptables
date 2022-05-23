@@ -22,6 +22,7 @@ linters:
     - maintidx
     - nonamedreturns
     - exhaustruct
+    - gomoddirectives
 linters-settings:
   gocyclo:
     # minimal code complexity to report, 30 by default
